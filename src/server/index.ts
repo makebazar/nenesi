@@ -6,7 +6,7 @@ import express, {
 import cors from "cors";
 import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
-import pool from "./db.ts";
+import pool from "./db.js";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
