@@ -1,0 +1,358 @@
+.wrapper {
+    min-height: 100vh;
+    background: var(--bg-color);
+    display: flex;
+    flex-direction: column;
+}
+
+.header {
+    padding: 20px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-color);
+    border-bottom: 0.5px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.logo {
+    display: flex;
+    flex-direction: column;
+}
+
+.logoTitle {
+    font-weight: 800;
+    font-size: 16px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+}
+
+.logoSubtitle {
+    font-size: 8px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    line-height: 1;
+    margin-top: 2px;
+}
+
+.main {
+    flex: 1;
+}
+
+.pageHeader {
+    padding: 32px 24px 8px;
+}
+
+.pageTitle {
+    font-size: 34px;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.03em;
+}
+
+.pageSubtitle {
+    font-size: 17px;
+    color: var(--text-secondary);
+    margin-top: 8px;
+    font-weight: 500;
+}
+
+.backBtn {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--accent-color);
+    background: none;
+}
+
+.editForm {
+    padding: 24px;
+}
+
+.formGrid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 32px;
+}
+
+.inputGroupFull {
+    width: 100%;
+    margin-bottom: 16px;
+}
+
+.inputGroupHalf {
+    width: calc(50% - 6px);
+    margin-bottom: 16px;
+}
+
+.inputLabel {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    margin-left: 4px;
+}
+
+.inputSmall {
+    width: 100%;
+    padding: 16px 20px;
+    background: #f5f5f7;
+    border-radius: 14px;
+    border: 1px solid transparent;
+    font-size: 16px;
+    font-weight: 600;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.inputSmall:focus {
+    background: #fff;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+.saveBtn {
+    width: 100%;
+    padding: 20px;
+    background: var(--accent-color);
+    color: #fff;
+    border-radius: 18px;
+    font-size: 18px;
+    font-weight: 600;
+    margin-top: 12px;
+    box-shadow: 0 10px 30px rgba(0, 113, 227, 0.25);
+}
+
+.slotsList {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.slotBtn {
+    width: 100%;
+    padding: 20px 24px;
+    background: #f5f5f7;
+    border-radius: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+}
+
+.slotBtnActive {
+    background: #fff;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+.slotTime {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.slotCheck {
+    color: var(--accent-color);
+    font-size: 20px;
+    font-weight: 800;
+}
+
+.infoBox {
+    background: #f5f5f7;
+    padding: 20px;
+    border-radius: 16px;
+    margin-bottom: 24px;
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.planSelectInfo {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}
+
+.planSelectDesc {
+    font-size: 14px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.planSelectPrice {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.paymentRow {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.cardIcon {
+    font-size: 24px;
+    background: #f5f5f7;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+}
+
+.paymentInfo {
+    flex: 1;
+}
+
+.cardNumber {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.paymentStatus {
+    font-size: 14px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.cardInputGroup {
+    display: flex;
+    flex-direction: column;
+}
+
+.section {
+    padding: 32px 24px;
+    border-bottom: 0.5px solid var(--border-color);
+}
+
+.sectionHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.editBtn {
+    background: none;
+    color: var(--accent-color);
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.addressMain {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+}
+
+.addressDetails {
+    font-size: 17px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.scheduleRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.scheduleDate {
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.scheduleStatus {
+    font-size: 16px;
+    color: var(--accent-color);
+    font-weight: 600;
+}
+
+.planBanner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--text-primary);
+    padding: 24px;
+    border-radius: 20px;
+    color: white;
+}
+
+.planName {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.planPrice {
+    font-size: 15px;
+    opacity: 0.8;
+    font-weight: 500;
+}
+
+.planExpiry {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 8px 16px;
+    border-radius: 100px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.historySection {
+    padding: 32px 24px 60px;
+}
+
+.historyList {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.historyItem {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.historyDot {
+    width: 8px;
+    height: 8px;
+    background: #d2d2d7;
+    border-radius: 50%;
+}
+
+.historyDate {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.historyStatus {
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}

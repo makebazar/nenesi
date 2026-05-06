@@ -1,0 +1,80 @@
+:root {
+    --font-family:
+        -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", sans-serif;
+    --bg-color: #ffffff;
+    --text-primary: #1d1d1f; /* Apple's Deep Charcoal instead of Black */
+    --text-secondary: #86868b;
+    --accent-color: #0071e3; /* Brighter, cleaner Blue */
+    --accent-soft: #e8f2ff;
+    --card-bg: #f5f5f7;
+    --border-color: #d2d2d7;
+    --safe-area-inset-bottom: env(safe-area-inset-bottom, 24px);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    line-height: 1.47059;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.022em;
+    overflow-x: hidden;
+}
+
+h1,
+h2,
+h3,
+h4 {
+    letter-spacing: -0.01em;
+    font-weight: 600;
+}
+
+button {
+    font-family: inherit;
+    cursor: pointer;
+    border: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+.reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition:
+        opacity 1.2s cubic-bezier(0.15, 0, 0.15, 1),
+        transform 1.2s cubic-bezier(0.15, 0, 0.15, 1);
+}
+
+.reveal_active {
+    opacity: 1 !important;
+    transform: translateY(0) !important;
+}
+
+@keyframes float {
+    0% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-8px);
+    }
+    100% {
+        transform: translateY(0px);
+    }
+}
+
+.floating {
+    animation: float 5s ease-in-out infinite;
+}

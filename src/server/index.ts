@@ -1,0 +1,214 @@
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import jwt from "jsonwebtoken";
+import pool from "./db.ts";
+import path from "path";
+import { fileURLToPath } from "url";
+
+dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+const PORT = process.env.PORT || 3001;
+const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
+
+app.use(cors());
+app.use(express.json());
+
+// --- MIDDLEWARE ---
+const authenticateToken = (req: any, res: any, next: any) => {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+  if (!token) return res.sendStatus(401);
+
+  jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
+    if (err) return res.sendStatus(403);
+    req.user = user;
+    next();
+  });
+};
+
+const isAdmin = (req: any, res: any, next: any) => {
+  if (req.user && req.user.role === "admin") {
+    next();
+  } else {
+    res.status(403).json({ message: "Access denied. Admins only." });
+  }
+};
+
+// --- AUTH ---
+app.post("/api/auth/login", async (req, res) => {
+  const { phone } = req.body;
+  try {
+    const result = await pool.query("SELECT * FROM users WHERE phone = $1", [phone]);
+    if (result.rows.length > 0) {
+      const user = result.rows[0];
+      const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET);
+      res.json({ user, token });
+    } else {
+      res.status(404).json({ message: "User not found" });
+    }
+  } catch (err) {
+    res.status(500).json({ error: "Auth error" });
+  }
+});
+
+// --- CLIENT PROFILE & VOTES ---
+app.get("/api/users/me", authenticateToken, async (req: any, res: any) => {
+  try {
+    const result = await pool.query(`
+      SELECT u.*, ua.*, rc.name as jk_name,
+             sv.vote_option as schedule_vote, tv.tariff_name as tariff_vote
+      FROM users u
+      LEFT JOIN user_addresses ua ON u.id = ua.user_id
+      LEFT JOIN residential_complexes rc ON ua.jk_id = rc.id
+      LEFT JOIN schedule_votes sv ON u.id = sv.user_id
+      LEFT JOIN tariff_votes tv ON u.id = tv.user_id
+      WHERE u.id = $1
+    `, [req.user.id]);
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: "Internal error" });
+  }
+});
+
+app.post("/api/tariff/vote", authenticateToken, async (req: any, res: any) => {
+  const { tariffName } = req.body;
+  try {
+    await pool.query(`
+      INSERT INTO tariff_votes (user_id, tariff_name)
+      VALUES ($1, $2)
+      ON CONFLICT (user_id) DO UPDATE SET tariff_name = EXCLUDED.tariff_name
+    `, [req.user.id, tariffName]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "DB Error" });
+  }
+});
+
+app.post("/api/schedule/vote", authenticateToken, async (req: any, res: any) => {
+  const { voteOption } = req.body;
+  try {
+    await pool.query(`
+      INSERT INTO schedule_votes (user_id, vote_option)
+      VALUES ($1, $2)
+      ON CONFLICT (user_id) DO UPDATE SET vote_option = EXCLUDED.vote_option
+    `, [req.user.id, voteOption]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "DB Error" });
+  }
+});
+
+// --- ADMIN API ---
+
+// All users for Admin
+app.get("/api/users", authenticateToken, isAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT u.id, u.phone, u.name, u.role, u.created_at,
+             ua.street, ua.entrance, ua.floor, ua.apartment, ua.intercom, rc.name as jk_name
+      FROM users u
+      LEFT JOIN user_addresses ua ON u.id = ua.user_id
+      LEFT JOIN residential_complexes rc ON ua.jk_id = rc.id
+      ORDER BY u.created_at DESC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: "DB Error" });
+  }
+});
+
+// Residential Complexes (JK)
+app.get("/api/jk", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT rc.*, rc.votes as fake_votes, COUNT(ua.user_id) as real_votes
+      FROM residential_complexes rc
+      LEFT JOIN user_addresses ua ON rc.id = ua.jk_id
+      GROUP BY rc.id
+      ORDER BY (rc.votes + COUNT(ua.user_id)) DESC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: "DB Error" });
+  }
+});
+
+app.post("/api/jk", authenticateToken, isAdmin, async (req, res) => {
+  const { name, address, votes, status } = req.body;
+  const result = await pool.query(
+    "INSERT INTO residential_complexes (name, address, votes, status) VALUES ($1, $2, $3, $4) RETURNING *",
+    [name, address, votes || 0, status || "pending"]
+  );
+  res.status(201).json(result.rows[0]);
+});
+
+app.put("/api/jk/:id", authenticateToken, isAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { name, address, votes, status } = req.body;
+  const result = await pool.query(
+    "UPDATE residential_complexes SET name = $1, address = $2, votes = $3, status = $4 WHERE id = $5 RETURNING *",
+    [name, address, votes, status, id]
+  );
+  res.json(result.rows[0]);
+});
+
+app.delete("/api/jk/:id", authenticateToken, isAdmin, async (req, res) => {
+  await pool.query("DELETE FROM residential_complexes WHERE id = $1", [req.params.id]);
+  res.json({ success: true });
+});
+
+// Vote stats for Admin
+app.get("/api/tariff/votes", authenticateToken, isAdmin, async (req, res) => {
+  const result = await pool.query("SELECT tariff_name, COUNT(*) as count FROM tariff_votes GROUP BY tariff_name");
+  res.json(result.rows);
+});
+
+app.get("/api/schedule/votes", authenticateToken, isAdmin, async (req, res) => {
+  const result = await pool.query("SELECT vote_option, COUNT(*) as count FROM schedule_votes GROUP BY vote_option");
+  res.json(result.rows);
+});
+
+// --- TARIFFS ---
+app.get("/api/tariffs", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM tariffs ORDER BY id");
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: "DB Error" });
+  }
+});
+
+app.put("/api/tariffs/:id", authenticateToken, isAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { tag, title, price, features, is_popular } = req.body;
+  try {
+    const result = await pool.query(
+      "UPDATE tariffs SET tag = $1, title = $2, price = $3, features = $4, is_popular = $5 WHERE id = $6 RETURNING *",
+      [tag, title, price, features, is_popular, id]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: "DB Error" });
+  }
+});
+
+// --- SERVING FRONTEND ---
+const distPath = path.join(__dirname, "../../dist");
+app.use(express.static(distPath));
+
+app.use((req, res) => {
+  if (req.url.startsWith("/api")) {
+    res.status(404).json({ error: "API route not found" });
+  } else {
+    res.sendFile(path.join(distPath, "index.html"));
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Server started on port ${PORT}`);
+});
