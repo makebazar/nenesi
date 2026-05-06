@@ -15,11 +15,7 @@ if (!connectionString) {
 
 const pool = new Pool({
   connectionString,
-  ssl: connectionString?.includes("localhost")
-    ? false
-    : {
-        rejectUnauthorized: false, // Common for cloud DBs
-      },
+  ssl: false,
 });
 
 export const query = (text: string, params?: any[]) => pool.query(text, params);

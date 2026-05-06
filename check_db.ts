@@ -12,7 +12,7 @@ async function check() {
 
   const pool = new Pool({
     connectionString,
-    ssl: { rejectUnauthorized: false },
+    ssl: false,
   });
 
   try {
