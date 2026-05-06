@@ -6,8 +6,9 @@ import express, {
 import cors from "cors";
 import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
-import pool from "./db.js";
+import pool from "./db.ts";
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
 
 dotenv.config();
@@ -282,7 +283,16 @@ app.use((req: Request, res: Response) => {
   if (req.url.startsWith("/api")) {
     res.status(404).json({ error: "API route not found" });
   } else {
-    res.sendFile(path.join(distPath, "index.html"));
+    const indexPath = path.join(distPath, "index.html");
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      res
+        .status(404)
+        .send(
+          `index.html not found at ${indexPath}. Current __dirname: ${__dirname}`,
+        );
+    }
   }
 });
 
