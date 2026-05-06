@@ -72,7 +72,10 @@ const Login: React.FC = () => {
             console.error("Voting error:", vErr);
           }
         }
-        navigate("/client");
+
+        if (authData.user.role === "admin") navigate("/admin");
+        else if (authData.user.role === "worker") navigate("/worker");
+        else navigate("/client");
       } catch (err) {
         console.error("Registration error:", err);
         alert("Ошибка регистрации. Проверьте данные.");
