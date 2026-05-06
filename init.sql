@@ -75,3 +75,21 @@ CREATE TABLE IF NOT EXISTS tariff_votes (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id) -- Each user can only vote once
 );
+
+CREATE TABLE IF NOT EXISTS tariffs (
+    id SERIAL PRIMARY KEY,
+    tag VARCHAR(50),
+    title VARCHAR(100) NOT NULL,
+    price INTEGER NOT NULL,
+    features TEXT[] DEFAULT '{}',
+    is_popular BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO tariffs (tag, title, price, features, is_popular)
+SELECT 'Выгодно', 'Эконом', 790, ARRAY['Вынос через день', 'Пакеты в подарок', 'Поддержка 24/7'], false
+WHERE NOT EXISTS (SELECT 1 FROM tariffs WHERE title = 'Эконом');
+
+INSERT INTO tariffs (tag, title, price, features, is_popular)
+SELECT 'Популярно', 'Комфорт', 990, ARRAY['Вынос каждый день', 'Пакеты в подарок', 'Приоритетное обслуживание'], true
+WHERE NOT EXISTS (SELECT 1 FROM tariffs WHERE title = 'Комфорт');

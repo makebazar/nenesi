@@ -1,18 +1,39 @@
-import pool from './src/server/db.ts';
+import { Pool } from "pg";
+import dotenv from "dotenv";
 
-async function checkVotes() {
+dotenv.config();
+
+async function check() {
+  const connectionString = process.env.DATABASE_URL;
+  console.log(
+    "Checking connection to:",
+    connectionString?.replace(/:([^:@]+)@/, ":****@"),
+  );
+
+  const pool = new Pool({
+    connectionString,
+    ssl: { rejectUnauthorized: false },
+  });
+
   try {
-    const users = await pool.query('SELECT * FROM users');
-    console.log('Users:', users.rows);
-    const votes = await pool.query('SELECT * FROM tariff_votes');
-    console.log('Tariff Votes:', votes.rows);
-    const sVotes = await pool.query('SELECT * FROM schedule_votes');
-    console.log('Schedule Votes:', sVotes.rows);
+    const res = await pool.query("SELECT NOW()");
+    console.log("SUCCESS: Database connected!");
+    console.log("Current time from DB:", res.rows[0]);
+
+    const tables = await pool.query(
+      "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'",
+    );
+    console.log(
+      "Existing tables:",
+      tables.rows.map((r) => r.table_name),
+    );
+
+    process.exit(0);
   } catch (err) {
+    console.error("FAILURE: Could not connect to database.");
     console.error(err);
-  } finally {
-    await pool.end();
+    process.exit(1);
   }
 }
 
-checkVotes();
+check();

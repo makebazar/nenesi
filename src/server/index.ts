@@ -309,6 +309,7 @@ app.get("/api/tariffs", async (_req: Request, res: Response) => {
     const result = await pool.query("SELECT * FROM tariffs ORDER BY id");
     res.json(result.rows);
   } catch (err) {
+    console.error("GET /api/tariffs Error:", err);
     res.status(500).json({ error: "DB Error" });
   }
 });
@@ -327,6 +328,7 @@ app.put(
       );
       res.json(result.rows[0]);
     } catch (err) {
+      console.error("PUT /api/tariffs/:id Error:", err);
       res.status(500).json({ error: "DB Error" });
     }
   },
