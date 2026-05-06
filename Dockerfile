@@ -1,38 +1,19 @@
-# --- Build Stage ---
-FROM node:20-alpine AS build
+FROM node:20-alpine
 
 WORKDIR /app
 
 # Install dependencies
 COPY package*.json ./
-RUN npm install
+RUN npm install && npm install -g ts-node typescript
 
-# Copy source code
+# Copy all source
 COPY . .
 
-# Build frontend and compile types
+# Build frontend
 RUN npm run build
 
-# --- Production Stage ---
-FROM node:20-alpine
-
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-
-# Install only production dependencies
-RUN npm install --omit=dev && npm install -g ts-node typescript
-
-# Copy built frontend assets
-COPY --from=build /app/dist ./dist
-
-# Copy server source code (we'll run it with ts-node in prod for simplicity in this stack)
-COPY src/server ./src/server
-COPY .env* ./
-
-# Expose the port Express is running on
+# Expose the server port
 EXPOSE 3001
 
-# Command to start the application
-CMD ["node", "--loader", "ts-node/esm", "src/server/index.ts"]
+# Run the app
+CMD ["npm", "start"]

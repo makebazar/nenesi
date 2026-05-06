@@ -8,6 +8,7 @@
     "dev:server": "nodemon --exec ts-node src/server/index.ts",
     "dev:client": "vite",
     "build": "tsc -b && vite build",
+    "build:server": "tsc -p tsconfig.node.json",
     "start": "node --loader ts-node/esm src/server/index.ts",
     "preview": "vite preview",
     "lint": "eslint ."
