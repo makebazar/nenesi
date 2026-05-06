@@ -64,6 +64,7 @@ export interface JK {
   id: number;
   name: string;
   address: string;
+  votes: number;
   fake_votes: number;
   real_votes: number;
   status: "pending" | "connected";

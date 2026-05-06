@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import styles from "./ClientDashboard.module.css";
-import { IMaskInput } from "react-imask";
 import {
   fetchUserProfile,
   voteForSchedule,
@@ -47,17 +46,6 @@ const ClientDashboard: React.FC = () => {
 
   const [plan, setPlan] = useState(plans[0]);
 
-  const [payment, setPayment] = useState({
-    card: "**** 4242",
-    linked: true,
-  });
-
-  const [newCard, setNewCard] = useState({
-    number: "",
-    expiry: "",
-    cvc: "",
-  });
-
   const handleSave = () => {
     setEditingSection(null);
   };
@@ -84,11 +72,6 @@ const ClientDashboard: React.FC = () => {
         console.error("Failed to vote:", error);
       }
     }
-  };
-
-  const handleLinkCard = () => {
-    setPayment({ card: "**** " + newCard.number.slice(-4), linked: true });
-    setEditingSection(null);
   };
 
   if (editingSection === "address") {
@@ -284,12 +267,17 @@ const ClientDashboard: React.FC = () => {
                 onClick={() => handleVote(slot.id as "morning" | "evening")}
               >
                 <span className={styles.slotTime}>{slot.label}</span>
-                {votedTime === slot.id && <span className={styles.slotCheck}>✓</span>}
+                {votedTime === slot.id && (
+                  <span className={styles.slotCheck}>✓</span>
+                )}
               </button>
             ))}
           </div>
           {votedTime && (
-            <div className={styles.pageSubtitle} style={{ fontSize: "14px", marginTop: "0" }}>
+            <div
+              className={styles.pageSubtitle}
+              style={{ fontSize: "14px", marginTop: "0" }}
+            >
               Спасибо, мы учтем ваш выбор!
             </div>
           )}
@@ -313,15 +301,22 @@ const ClientDashboard: React.FC = () => {
                   <span className={styles.slotTime}>{p.name}</span>
                   <span className={styles.planSelectDesc}>{p.desc}</span>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
+                >
                   <span className={styles.planSelectPrice}>{p.price}</span>
-                  {votedTariff === p.name && <span className={styles.slotCheck}>✓</span>}
+                  {votedTariff === p.name && (
+                    <span className={styles.slotCheck}>✓</span>
+                  )}
                 </div>
               </button>
             ))}
           </div>
           {votedTariff && (
-            <div className={styles.pageSubtitle} style={{ fontSize: "14px", marginTop: "0" }}>
+            <div
+              className={styles.pageSubtitle}
+              style={{ fontSize: "14px", marginTop: "0" }}
+            >
               Спасибо, мы учтем ваш выбор!
             </div>
           )}

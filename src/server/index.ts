@@ -1,4 +1,4 @@
-import express from "express";
+import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
@@ -18,8 +18,16 @@ const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
 app.use(cors());
 app.use(express.json());
 
+interface AuthRequest extends Request {
+  user?: any;
+}
+
 // --- MIDDLEWARE ---
-const authenticateToken = (req: any, res: any, next: any) => {
+const authenticateToken = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
   if (!token) return res.sendStatus(401);
@@ -31,7 +39,7 @@ const authenticateToken = (req: any, res: any, next: any) => {
   });
 };
 
-const isAdmin = (req: any, res: any, next: any) => {
+const isAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
   if (req.user && req.user.role === "admin") {
     next();
   } else {
@@ -40,10 +48,12 @@ const isAdmin = (req: any, res: any, next: any) => {
 };
 
 // --- AUTH ---
-app.post("/api/auth/login", async (req, res) => {
+app.post("/api/auth/login", async (req: Request, res: Response) => {
   const { phone } = req.body;
   try {
-    const result = await pool.query("SELECT * FROM users WHERE phone = $1", [phone]);
+    const result = await pool.query("SELECT * FROM users WHERE phone = $1", [
+      phone,
+    ]);
     if (result.rows.length > 0) {
       const user = result.rows[0];
       const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET);
@@ -57,9 +67,13 @@ app.post("/api/auth/login", async (req, res) => {
 });
 
 // --- CLIENT PROFILE & VOTES ---
-app.get("/api/users/me", authenticateToken, async (req: any, res: any) => {
-  try {
-    const result = await pool.query(`
+app.get(
+  "/api/users/me",
+  authenticateToken,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const result = await pool.query(
+        `
       SELECT u.*, ua.*, rc.name as jk_name,
              sv.vote_option as schedule_vote, tv.tariff_name as tariff_vote
       FROM users u
@@ -68,47 +82,68 @@ app.get("/api/users/me", authenticateToken, async (req: any, res: any) => {
       LEFT JOIN schedule_votes sv ON u.id = sv.user_id
       LEFT JOIN tariff_votes tv ON u.id = tv.user_id
       WHERE u.id = $1
-    `, [req.user.id]);
-    res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: "Internal error" });
-  }
-});
+    `,
+        [req.user.id],
+      );
+      res.json(result.rows[0]);
+    } catch (err) {
+      res.status(500).json({ error: "Internal error" });
+    }
+  },
+);
 
-app.post("/api/tariff/vote", authenticateToken, async (req: any, res: any) => {
-  const { tariffName } = req.body;
-  try {
-    await pool.query(`
+app.post(
+  "/api/tariff/vote",
+  authenticateToken,
+  async (req: AuthRequest, res: Response) => {
+    const { tariffName } = req.body;
+    try {
+      await pool.query(
+        `
       INSERT INTO tariff_votes (user_id, tariff_name)
       VALUES ($1, $2)
       ON CONFLICT (user_id) DO UPDATE SET tariff_name = EXCLUDED.tariff_name
-    `, [req.user.id, tariffName]);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: "DB Error" });
-  }
-});
+    `,
+        [req.user.id, tariffName],
+      );
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: "DB Error" });
+    }
+  },
+);
 
-app.post("/api/schedule/vote", authenticateToken, async (req: any, res: any) => {
-  const { voteOption } = req.body;
-  try {
-    await pool.query(`
+app.post(
+  "/api/schedule/vote",
+  authenticateToken,
+  async (req: AuthRequest, res: Response) => {
+    const { voteOption } = req.body;
+    try {
+      await pool.query(
+        `
       INSERT INTO schedule_votes (user_id, vote_option)
       VALUES ($1, $2)
       ON CONFLICT (user_id) DO UPDATE SET vote_option = EXCLUDED.vote_option
-    `, [req.user.id, voteOption]);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: "DB Error" });
-  }
-});
+    `,
+        [req.user.id, voteOption],
+      );
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: "DB Error" });
+    }
+  },
+);
 
 // --- ADMIN API ---
 
 // All users for Admin
-app.get("/api/users", authenticateToken, isAdmin, async (req, res) => {
-  try {
-    const result = await pool.query(`
+app.get(
+  "/api/users",
+  authenticateToken,
+  isAdmin,
+  async (_req: AuthRequest, res: Response) => {
+    try {
+      const result = await pool.query(`
       SELECT u.id, u.phone, u.name, u.role, u.created_at,
              ua.street, ua.entrance, ua.floor, ua.apartment, ua.intercom, rc.name as jk_name
       FROM users u
@@ -116,14 +151,15 @@ app.get("/api/users", authenticateToken, isAdmin, async (req, res) => {
       LEFT JOIN residential_complexes rc ON ua.jk_id = rc.id
       ORDER BY u.created_at DESC
     `);
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: "DB Error" });
-  }
-});
+      res.json(result.rows);
+    } catch (err) {
+      res.status(500).json({ error: "DB Error" });
+    }
+  },
+);
 
 // Residential Complexes (JK)
-app.get("/api/jk", async (req, res) => {
+app.get("/api/jk", async (_req: Request, res: Response) => {
   try {
     const result = await pool.query(`
       SELECT rc.*, rc.votes as fake_votes, COUNT(ua.user_id) as real_votes
@@ -138,43 +174,74 @@ app.get("/api/jk", async (req, res) => {
   }
 });
 
-app.post("/api/jk", authenticateToken, isAdmin, async (req, res) => {
-  const { name, address, votes, status } = req.body;
-  const result = await pool.query(
-    "INSERT INTO residential_complexes (name, address, votes, status) VALUES ($1, $2, $3, $4) RETURNING *",
-    [name, address, votes || 0, status || "pending"]
-  );
-  res.status(201).json(result.rows[0]);
-});
+app.post(
+  "/api/jk",
+  authenticateToken,
+  isAdmin,
+  async (req: AuthRequest, res: Response) => {
+    const { name, address, votes, status } = req.body;
+    const result = await pool.query(
+      "INSERT INTO residential_complexes (name, address, votes, status) VALUES ($1, $2, $3, $4) RETURNING *",
+      [name, address, votes || 0, status || "pending"],
+    );
+    res.status(201).json(result.rows[0]);
+  },
+);
 
-app.put("/api/jk/:id", authenticateToken, isAdmin, async (req, res) => {
-  const { id } = req.params;
-  const { name, address, votes, status } = req.body;
-  const result = await pool.query(
-    "UPDATE residential_complexes SET name = $1, address = $2, votes = $3, status = $4 WHERE id = $5 RETURNING *",
-    [name, address, votes, status, id]
-  );
-  res.json(result.rows[0]);
-});
+app.put(
+  "/api/jk/:id",
+  authenticateToken,
+  isAdmin,
+  async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+    const { name, address, votes, status } = req.body;
+    const result = await pool.query(
+      "UPDATE residential_complexes SET name = $1, address = $2, votes = $3, status = $4 WHERE id = $5 RETURNING *",
+      [name, address, votes, status, id],
+    );
+    res.json(result.rows[0]);
+  },
+);
 
-app.delete("/api/jk/:id", authenticateToken, isAdmin, async (req, res) => {
-  await pool.query("DELETE FROM residential_complexes WHERE id = $1", [req.params.id]);
-  res.json({ success: true });
-});
+app.delete(
+  "/api/jk/:id",
+  authenticateToken,
+  isAdmin,
+  async (req: AuthRequest, res: Response) => {
+    await pool.query("DELETE FROM residential_complexes WHERE id = $1", [
+      req.params.id,
+    ]);
+    res.json({ success: true });
+  },
+);
 
 // Vote stats for Admin
-app.get("/api/tariff/votes", authenticateToken, isAdmin, async (req, res) => {
-  const result = await pool.query("SELECT tariff_name, COUNT(*) as count FROM tariff_votes GROUP BY tariff_name");
-  res.json(result.rows);
-});
+app.get(
+  "/api/tariff/votes",
+  authenticateToken,
+  isAdmin,
+  async (_req: AuthRequest, res: Response) => {
+    const result = await pool.query(
+      "SELECT tariff_name, COUNT(*) as count FROM tariff_votes GROUP BY tariff_name",
+    );
+    res.json(result.rows);
+  },
+);
 
-app.get("/api/schedule/votes", authenticateToken, isAdmin, async (req, res) => {
-  const result = await pool.query("SELECT vote_option, COUNT(*) as count FROM schedule_votes GROUP BY vote_option");
-  res.json(result.rows);
-});
+app.get(
+  "/api/schedule/votes",
+  authenticateToken,
+  isAdmin,
+  async (_req: AuthRequest, res: Response) => {
+    const result = await pool.query(
+      "SELECT vote_option, COUNT(*) as count FROM schedule_votes GROUP BY vote_option",
+    );
+    res.json(result.rows);
+  },
+);
 
 // --- TARIFFS ---
-app.get("/api/tariffs", async (req, res) => {
+app.get("/api/tariffs", async (_req: Request, res: Response) => {
   try {
     const result = await pool.query("SELECT * FROM tariffs ORDER BY id");
     res.json(result.rows);
@@ -183,25 +250,30 @@ app.get("/api/tariffs", async (req, res) => {
   }
 });
 
-app.put("/api/tariffs/:id", authenticateToken, isAdmin, async (req, res) => {
-  const { id } = req.params;
-  const { tag, title, price, features, is_popular } = req.body;
-  try {
-    const result = await pool.query(
-      "UPDATE tariffs SET tag = $1, title = $2, price = $3, features = $4, is_popular = $5 WHERE id = $6 RETURNING *",
-      [tag, title, price, features, is_popular, id]
-    );
-    res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: "DB Error" });
-  }
-});
+app.put(
+  "/api/tariffs/:id",
+  authenticateToken,
+  isAdmin,
+  async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+    const { tag, title, price, features, is_popular } = req.body;
+    try {
+      const result = await pool.query(
+        "UPDATE tariffs SET tag = $1, title = $2, price = $3, features = $4, is_popular = $5 WHERE id = $6 RETURNING *",
+        [tag, title, price, features, is_popular, id],
+      );
+      res.json(result.rows[0]);
+    } catch (err) {
+      res.status(500).json({ error: "DB Error" });
+    }
+  },
+);
 
 // --- SERVING FRONTEND ---
 const distPath = path.join(__dirname, "../../dist");
 app.use(express.static(distPath));
 
-app.use((req, res) => {
+app.use((req: Request, res: Response) => {
   if (req.url.startsWith("/api")) {
     res.status(404).json({ error: "API route not found" });
   } else {
@@ -210,5 +282,5 @@ app.use((req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server started on port ${PORT}`)
+  console.log(`Server started on port ${PORT}`);
 });
