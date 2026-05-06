@@ -9,7 +9,6 @@ import jwt from "jsonwebtoken";
 import pool from "./db.js";
 import path from "path";
 import fs from "fs";
-import { fileURLToPath } from "url";
 
 dotenv.config();
 
