@@ -13,7 +13,7 @@ import fs from "fs";
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT) || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
 
 app.use(cors());
@@ -23,6 +23,11 @@ app.use(express.json());
 app.use((req: Request, _res: Response, next: NextFunction) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
   next();
+});
+
+// --- HEALTH CHECK ---
+app.get("/health", (_req, res) => {
+  res.send("OK");
 });
 
 interface AuthRequest extends Request {
@@ -298,6 +303,29 @@ app.use((req: Request, res: Response) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server started on port ${PORT}`);
-});
+// --- STARTUP ---
+const start = async () => {
+  try {
+    const res = await pool.query("SELECT NOW()");
+    console.log("Database connection successful:", res.rows[0]);
+  } catch (err) {
+    console.error("Database connection failed on startup:", err);
+  }
+
+  try {
+    if (fs.existsSync(distPath)) {
+      const files = fs.readdirSync(distPath);
+      console.log("Files in dist directory:", files);
+    } else {
+      console.error("dist directory NOT FOUND at:", distPath);
+    }
+  } catch (err) {
+    console.error("Error reading dist directory:", err);
+  }
+
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server started on port ${PORT} (0.0.0.0)`);
+  });
+};
+
+start();
