@@ -62,19 +62,76 @@ const isAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
 // --- AUTH ---
 app.post("/api/auth/login", async (req: Request, res: Response) => {
   const { phone } = req.body;
+  if (!phone) return res.status(400).json({ message: "Phone is required" });
+
   try {
     const result = await pool.query("SELECT * FROM users WHERE phone = $1", [
       phone,
     ]);
+    let user;
     if (result.rows.length > 0) {
-      const user = result.rows[0];
-      const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET);
-      res.json({ user, token });
+      user = result.rows[0];
     } else {
-      res.status(404).json({ message: "User not found" });
+      // Auto-create user if not exists (optional, depends on your flow)
+      const newUser = await pool.query(
+        "INSERT INTO users (phone, role) VALUES ($1, $2) RETURNING *",
+        [phone, "client"],
+      );
+      user = newUser.rows[0];
     }
+    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET);
+    res.json({ user, token });
   } catch (err) {
+    console.error("Login error:", err);
     res.status(500).json({ error: "Auth error" });
+  }
+});
+
+app.post("/api/auth/register", async (req: Request, res: Response) => {
+  const { phone, name, role, address } = req.body;
+  if (!phone) return res.status(400).json({ message: "Phone is required" });
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // 1. Create or get user
+    const userRes = await client.query(
+      "INSERT INTO users (phone, name, role) VALUES ($1, $2, $3) ON CONFLICT (phone) DO UPDATE SET name = EXCLUDED.name RETURNING *",
+      [phone, name || "User", role || "client"],
+    );
+    const user = userRes.rows[0];
+
+    // 2. Create address if provided
+    if (address) {
+      await client.query(
+        `INSERT INTO user_addresses (user_id, jk_id, street, entrance, floor, apartment, intercom)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         ON CONFLICT (user_id) DO UPDATE SET
+            jk_id = EXCLUDED.jk_id, street = EXCLUDED.street,
+            entrance = EXCLUDED.entrance, floor = EXCLUDED.floor,
+            apartment = EXCLUDED.apartment, intercom = EXCLUDED.intercom`,
+        [
+          user.id,
+          address.jkId || null,
+          address.street,
+          address.entrance,
+          address.floor,
+          address.apartment,
+          address.intercom,
+        ],
+      );
+    }
+
+    await client.query("COMMIT");
+    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET);
+    res.json({ user, token });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("Registration error:", err);
+    res.status(500).json({ error: "Registration failed" });
+  } finally {
+    client.release();
   }
 });
 

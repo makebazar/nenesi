@@ -32,7 +32,8 @@ CREATE TABLE IF NOT EXISTS user_addresses (
     floor TEXT,
     apartment TEXT,
     intercom TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id)
 );
 
 ALTER TABLE user_addresses DROP CONSTRAINT IF EXISTS user_addresses_jk_id_fkey;
