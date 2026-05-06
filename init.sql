@@ -39,6 +39,14 @@ CREATE TABLE IF NOT EXISTS user_addresses (
 ALTER TABLE user_addresses DROP CONSTRAINT IF EXISTS user_addresses_jk_id_fkey;
 ALTER TABLE user_addresses ADD CONSTRAINT user_addresses_jk_id_fkey FOREIGN KEY (jk_id) REFERENCES residential_complexes(id) ON DELETE SET NULL;
 
+-- Ensure unique constraint for upsert
+DO $$ BEGIN
+    ALTER TABLE user_addresses ADD CONSTRAINT user_addresses_user_id_key UNIQUE (user_id);
+EXCEPTION
+    WHEN duplicate_table THEN null;
+    WHEN duplicate_object THEN null;
+END $$;
+
 -- Insert some initial data if not already present
 INSERT INTO residential_complexes (name, address, votes, status)
 SELECT 'ЖК Сердце Каспия', 'Наб. Приволжского затона, 20', 84, 'pending'
