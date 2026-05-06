@@ -68,19 +68,13 @@ app.post("/api/auth/login", async (req: Request, res: Response) => {
     const result = await pool.query("SELECT * FROM users WHERE phone = $1", [
       phone,
     ]);
-    let user;
     if (result.rows.length > 0) {
-      user = result.rows[0];
+      const user = result.rows[0];
+      const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET);
+      res.json({ user, token });
     } else {
-      // Auto-create user if not exists (optional, depends on your flow)
-      const newUser = await pool.query(
-        "INSERT INTO users (phone, role) VALUES ($1, $2) RETURNING *",
-        [phone, "client"],
-      );
-      user = newUser.rows[0];
+      res.status(404).json({ message: "User not found" });
     }
-    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET);
-    res.json({ user, token });
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ error: "Auth error" });
