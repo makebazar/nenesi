@@ -6,7 +6,7 @@ import express, {
 import cors from "cors";
 import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
-import pool from "./db.js";
+import pool from "./db.ts";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -275,6 +275,7 @@ app.put(
 
 // --- SERVING FRONTEND ---
 const distPath = path.join(__dirname, "../../dist");
+console.log("Serving frontend from:", distPath);
 app.use(express.static(distPath));
 
 app.use((req: Request, res: Response) => {

@@ -5,11 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
-    "dev:server": "nodemon --exec ts-node src/server/index.ts",
+    "dev:server": "tsx watch src/server/index.ts",
     "dev:client": "vite",
     "build": "tsc -b && vite build",
     "build:server": "tsc -p tsconfig.node.json",
-    "start": "node --loader ts-node/esm src/server/index.ts",
+    "start": "tsx src/server/index.ts",
     "preview": "vite preview",
     "lint": "eslint ."
   },
@@ -41,7 +41,7 @@
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.5.0",
     "nodemon": "^3.1.14",
-    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.2",
     "vite": "^8.0.10"

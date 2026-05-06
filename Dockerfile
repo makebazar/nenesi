@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Install dependencies
 COPY package*.json ./
-RUN npm install && npm install -g ts-node typescript
+RUN npm install && npm install -g tsx typescript
 
 # Copy all source
 COPY . .
