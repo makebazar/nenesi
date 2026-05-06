@@ -275,7 +275,7 @@ app.put(
 );
 
 // --- SERVING FRONTEND ---
-const distPath = path.join(__dirname, "../../dist");
+const distPath = path.join(process.cwd(), "dist");
 console.log("Serving frontend from:", distPath);
 app.use(express.static(distPath));
 
@@ -290,7 +290,7 @@ app.use((req: Request, res: Response) => {
       res
         .status(404)
         .send(
-          `index.html not found at ${indexPath}. Current __dirname: ${__dirname}`,
+          `index.html not found at ${indexPath}. Working directory: ${process.cwd()}`,
         );
     }
   }
