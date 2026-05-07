@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import styles from "./WorkerDashboard.module.css";
-import { useAuth } from "../context/AuthContext.tsx";
+import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
 
 type Tab = "tasks" | "profile";

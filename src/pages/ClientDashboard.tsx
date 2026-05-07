@@ -8,7 +8,7 @@ import {
   type User,
   type Tariff,
 } from "../services/api";
-import { useAuth } from "../context/AuthContext.tsx";
+import { useAuth } from "../context/AuthContext";
 
 import { Link } from "react-router-dom";
 
