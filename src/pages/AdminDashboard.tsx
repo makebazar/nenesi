@@ -18,7 +18,7 @@ import {
   type TariffVote,
   type Tariff,
 } from "../services/api";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/AuthContext.tsx";
 import { Link } from "react-router-dom";
 
 type Tab = "overview" | "employees" | "jk" | "tariffs" | "users";

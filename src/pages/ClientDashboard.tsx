@@ -8,7 +8,7 @@ import {
   type User,
   type Tariff,
 } from "../services/api";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/AuthContext.tsx";
 
 import { Link } from "react-router-dom";
 
@@ -100,7 +100,7 @@ const ClientDashboard: React.FC = () => {
           </div>
           <div className={styles.editForm}>
             <div className={styles.inputGroupFull}>
-              <label className={styles.inputLabel}>ЖК</label>
+              <label className={styles.inputLabel}>ЖК *</label>
               <input
                 type="text"
                 className={styles.inputSmall}
@@ -109,7 +109,7 @@ const ClientDashboard: React.FC = () => {
               />
             </div>
             <div className={styles.inputGroupFull}>
-              <label className={styles.inputLabel}>Улица и дом</label>
+              <label className={styles.inputLabel}>Улица и дом *</label>
               <input
                 type="text"
                 className={styles.inputSmall}
@@ -119,7 +119,7 @@ const ClientDashboard: React.FC = () => {
             </div>
             <div className={styles.formGrid}>
               <div className={styles.inputGroupHalf}>
-                <label className={styles.inputLabel}>Подъезд</label>
+                <label className={styles.inputLabel}>Подъезд *</label>
                 <input
                   type="text"
                   className={styles.inputSmall}
@@ -130,7 +130,7 @@ const ClientDashboard: React.FC = () => {
                 />
               </div>
               <div className={styles.inputGroupHalf}>
-                <label className={styles.inputLabel}>Этаж</label>
+                <label className={styles.inputLabel}>Этаж *</label>
                 <input
                   type="text"
                   className={styles.inputSmall}
@@ -139,7 +139,7 @@ const ClientDashboard: React.FC = () => {
                 />
               </div>
               <div className={styles.inputGroupHalf}>
-                <label className={styles.inputLabel}>Кв.</label>
+                <label className={styles.inputLabel}>Кв. *</label>
                 <input
                   type="text"
                   className={styles.inputSmall}
@@ -161,7 +161,17 @@ const ClientDashboard: React.FC = () => {
                 />
               </div>
             </div>
-            <button className={styles.saveBtn} onClick={handleSave}>
+            <button
+              className={styles.saveBtn}
+              onClick={handleSave}
+              disabled={
+                !user.jk_name?.trim() ||
+                !user.street?.trim() ||
+                !user.entrance?.trim() ||
+                !user.floor?.trim() ||
+                !user.apartment?.trim()
+              }
+            >
               Сохранить изменения
             </button>
           </div>

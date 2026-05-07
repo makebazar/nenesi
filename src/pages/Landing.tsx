@@ -291,6 +291,18 @@ const Landing: React.FC = () => {
           </div>
         </section>
       </main>
+
+      <footer className={styles.footer}>
+        <div className={styles.footerContent}>
+          <div className={styles.footerCopyright}>© 2026 НЕ НЕСИ САМ</div>
+          <div className={styles.footerLegal}>
+            <div className={styles.footerInfo}>
+              <span>ИП Сенектутов Николай Олегович</span>
+              <span>ИНН: 302501866145</span>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };

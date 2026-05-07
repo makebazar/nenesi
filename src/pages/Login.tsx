@@ -13,7 +13,7 @@ import {
   type JK,
   type Tariff,
 } from "../services/api";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/AuthContext.tsx";
 
 type Step = "phone" | "profile" | "address" | "schedule" | "tariff";
 
@@ -83,7 +83,15 @@ const Login: React.FC = () => {
     } else if (step === "profile") {
       if (name.trim()) setStep("address");
     } else if (step === "address") {
-      if (street.trim()) setStep("schedule");
+      if (
+        jkId &&
+        street.trim() &&
+        entrance.trim() &&
+        floor.trim() &&
+        apartment.trim()
+      ) {
+        setStep("schedule");
+      }
     } else if (step === "schedule") {
       if (scheduleVote) setStep("tariff");
     } else if (step === "tariff") {
@@ -191,7 +199,7 @@ const Login: React.FC = () => {
                     style={{ appearance: "none", backgroundColor: "#f5f5f7" }}
                   >
                     <option value="" disabled>
-                      Выберите свой ЖК
+                      Выберите свой ЖК *
                     </option>
                     {jks.map((jk) => (
                       <option key={jk.id} value={jk.id}>
@@ -203,7 +211,7 @@ const Login: React.FC = () => {
                 <div className={styles.inputGroupFull}>
                   <input
                     type="text"
-                    placeholder="Улица и дом"
+                    placeholder="Улица и дом *"
                     className={styles.inputSmall}
                     value={street}
                     onChange={(e) => setStreet(e.target.value)}
@@ -212,7 +220,7 @@ const Login: React.FC = () => {
                 <div className={styles.inputGroupHalf}>
                   <input
                     type="text"
-                    placeholder="Подъезд"
+                    placeholder="Подъезд *"
                     className={styles.inputSmall}
                     value={entrance}
                     onChange={(e) => setEntrance(e.target.value)}
@@ -221,7 +229,7 @@ const Login: React.FC = () => {
                 <div className={styles.inputGroupHalf}>
                   <input
                     type="text"
-                    placeholder="Этаж"
+                    placeholder="Этаж *"
                     className={styles.inputSmall}
                     value={floor}
                     onChange={(e) => setFloor(e.target.value)}
@@ -230,7 +238,7 @@ const Login: React.FC = () => {
                 <div className={styles.inputGroupHalf}>
                   <input
                     type="text"
-                    placeholder="Кв."
+                    placeholder="Кв. *"
                     className={styles.inputSmall}
                     value={apartment}
                     onChange={(e) => setApartment(e.target.value)}
@@ -308,6 +316,13 @@ const Login: React.FC = () => {
             className={styles.submitBtn}
             onClick={handleContinue}
             disabled={
+              (step === "profile" && !name.trim()) ||
+              (step === "address" &&
+                (!jkId ||
+                  !street.trim() ||
+                  !entrance.trim() ||
+                  !floor.trim() ||
+                  !apartment.trim())) ||
               (step === "schedule" && !scheduleVote) ||
               (step === "tariff" && !selectedTariff)
             }

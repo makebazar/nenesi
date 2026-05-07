@@ -101,6 +101,8 @@ app.post("/api/auth/register", async (req: Request, res: Response) => {
       "INSERT INTO users (phone, name, role) VALUES ($1, $2, $3) ON CONFLICT (phone) DO UPDATE SET name = EXCLUDED.name RETURNING *",
       [cleanPhone, name || "User", role || "client"],
     );
+    const user = userRes.rows[0];
+
     // 2. Create address if provided
     if (address) {
       await client.query(
