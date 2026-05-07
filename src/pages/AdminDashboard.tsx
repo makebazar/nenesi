@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import styles from "./AdminDashboard.module.css";
 import {
   fetchJks,
@@ -7,16 +6,20 @@ import {
   updateJk,
   deleteJk,
   fetchUsers,
+  deleteUser,
   fetchScheduleVotes,
   fetchTariffVotes,
   fetchTariffs,
   updateTariff,
+  deleteTariff,
   type JK,
   type User,
   type ScheduleVote,
   type TariffVote,
   type Tariff,
 } from "../services/api";
+import { useAuth } from "../context/AuthContext";
+import { Link } from "react-router-dom";
 
 type Tab = "overview" | "employees" | "jk" | "tariffs" | "users";
 type EmployeeStatus = "active" | "on_shift" | "sick" | "fired";
@@ -34,8 +37,8 @@ interface Employee {
 }
 
 const AdminDashboard: React.FC = () => {
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
+  const { token, logout } = useAuth();
 
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
     null,
@@ -88,7 +91,8 @@ const AdminDashboard: React.FC = () => {
   const [tariffs, setTariffs] = useState<Tariff[]>([]);
   const [editingTariff, setEditingTariff] = useState<Tariff | null>(null);
 
-  const token = localStorage.getItem("token") || "";
+  const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
+  const [jkFilter, setJkFilter] = useState<string>("all");
 
   const loadUsers = async () => {
     if (!token) return;
@@ -99,6 +103,12 @@ const AdminDashboard: React.FC = () => {
       console.error("Failed to fetch users:", err);
     }
   };
+
+  useEffect(() => {
+    const handleClickOutside = () => setActiveMenuId(null);
+    window.addEventListener("click", handleClickOutside);
+    return () => window.removeEventListener("click", handleClickOutside);
+  }, []);
 
   const loadJks = async () => {
     try {
@@ -153,7 +163,7 @@ const AdminDashboard: React.FC = () => {
       loadTariffs();
     }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [token]);
 
   const handleUpdateTariff = async () => {
     if (!editingTariff || !token) return;
@@ -168,7 +178,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleAddJk = async () => {
-    if (!newJkName || !newJkAddress) return;
+    if (!newJkName || !newJkAddress || !token) return;
     try {
       await createJk(token, {
         name: newJkName,
@@ -187,6 +197,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   const toggleJkStatus = async (jk: JK) => {
+    if (!token) return;
     try {
       await updateJk(token, jk.id, {
         ...jk,
@@ -255,16 +266,21 @@ const AdminDashboard: React.FC = () => {
     <>
       <div className={styles.statsScroll}>
         <div className={styles.statCard}>
-          <div className={styles.statLabel}>Выручка</div>
-          <div className={styles.statValue}>540к</div>
+          <div className={styles.statLabel}>Пользователи</div>
+          <div className={styles.statValue}>{users.length}</div>
         </div>
         <div className={`${styles.statCard} ${styles.statCardAlt}`}>
-          <div className={styles.statLabel}>Юзеры</div>
-          <div className={styles.statValue}>1,248</div>
+          <div className={styles.statLabel}>Заявки (ЖК)</div>
+          <div className={styles.statValue}>
+            {jkVotes.reduce((acc, jk) => acc + Number(jk.real_votes), 0)}
+          </div>
         </div>
         <div className={`${styles.statCard} ${styles.statCardAlt}`}>
-          <div className={styles.statLabel}>Подписки</div>
-          <div className={styles.statValue}>432</div>
+          <div className={styles.statLabel}>Опросы</div>
+          <div className={styles.statValue}>
+            {scheduleVotes.reduce((acc, v) => acc + Number(v.count), 0) +
+              tariffVotes.reduce((acc, v) => acc + Number(v.count), 0)}
+          </div>
         </div>
       </div>
 
@@ -280,13 +296,13 @@ const AdminDashboard: React.FC = () => {
         </div>
         <div className={styles.list}>
           {[...jkVotes]
-            .sort((a, b) => (b.fake_votes + b.real_votes) - (a.fake_votes + a.real_votes))
+            .sort((a, b) => b.real_votes - a.real_votes)
             .slice(0, 3)
             .map((jk) => (
               <div key={jk.id} className={styles.listItem}>
                 <div className={styles.itemInfo}>
                   <span className={styles.itemTitle}>{jk.name}</span>
-                  <span className={styles.itemSub}>{jk.real_votes} + {jk.fake_votes} заявок</span>
+                  <span className={styles.itemSub}>{jk.real_votes} заявок</span>
                 </div>
                 <div
                   className={`${styles.itemBadge} ${jk.status === "connected" ? styles.itemBadgeAlt : ""}`}
@@ -338,39 +354,172 @@ const AdminDashboard: React.FC = () => {
     </>
   );
 
-  const renderUsers = () => (
-    <div className={styles.section}>
-      <div className={styles.sectionHeader}>
-        <span className={styles.label}>Клиенты</span>
-      </div>
-      <div className={styles.list}>
-        {users.map((user) => {
-          const address = [
-            user.jk_name,
-            user.street,
-            user.apartment ? `кв. ${user.apartment}` : null,
-          ]
-            .filter(Boolean)
-            .join(", ");
+  const renderUsers = () => {
+    const getRoleLabel = (role: string) => {
+      switch (role) {
+        case "admin":
+          return "Администратор";
+        case "worker":
+          return "Сотрудник";
+        default:
+          return "Клиент";
+      }
+    };
 
-          return (
-            <div key={user.id} className={styles.listItem}>
-              <div className={styles.itemInfo}>
-                <span className={styles.itemTitle}>{user.name}</span>
-                <span className={styles.itemSub}>{user.phone}</span>
-                {address && <span className={styles.itemSub} style={{ marginTop: '4px', color: 'var(--text-secondary)'}}>{address}</span>}
+    const filteredUsers =
+      jkFilter === "all" ? users : users.filter((u) => u.jk_name === jkFilter);
+
+    return (
+      <div className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <span className={styles.label}>Клиенты</span>
+          <select
+            className={styles.inputSmall}
+            style={{ width: "auto", padding: "8px 12px", fontSize: "13px" }}
+            value={jkFilter}
+            onChange={(e) => setJkFilter(e.target.value)}
+          >
+            <option value="all">Все ЖК</option>
+            {jkVotes.map((jk) => (
+              <option key={jk.id} value={jk.name}>
+                {jk.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className={styles.list}>
+          {filteredUsers.map((user) => {
+            const address = [
+              user.jk_name,
+              user.street,
+              user.apartment ? `кв. ${user.apartment}` : null,
+            ]
+              .filter(Boolean)
+              .join(", ");
+
+            return (
+              <div key={user.id} className={styles.listItem}>
+                <div className={styles.itemInfo}>
+                  <div className={styles.itemTitleRow}>
+                    <span className={styles.itemTitle}>{user.name}</span>
+                  </div>
+                  <span className={styles.itemSub}>{user.phone}</span>
+                  {address && (
+                    <span
+                      className={styles.itemSub}
+                      style={{
+                        marginTop: "4px",
+                        color: "var(--text-secondary)",
+                      }}
+                    >
+                      {address}
+                    </span>
+                  )}
+                  {(user.tariff_vote || user.schedule_vote) && (
+                    <div
+                      style={{
+                        marginTop: "12px",
+                        display: "flex",
+                        gap: "6px",
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      {user.tariff_vote && (
+                        <span
+                          style={{
+                            background: "var(--accent-soft)",
+                            color: "var(--accent-color)",
+                            padding: "4px 10px",
+                            borderRadius: "8px",
+                            fontSize: "11px",
+                            fontWeight: "700",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.02em",
+                          }}
+                        >
+                          {user.tariff_vote}
+                        </span>
+                      )}
+                      {user.schedule_vote && (
+                        <span
+                          style={{
+                            background: "#f2f2f7",
+                            color: "#8e8e93",
+                            padding: "4px 10px",
+                            borderRadius: "8px",
+                            fontSize: "11px",
+                            fontWeight: "700",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.02em",
+                          }}
+                        >
+                          {user.schedule_vote === "morning" ? "Утро" : "Вечер"}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className={styles.itemValueColumn}>
+                  <div
+                    className={`${styles.itemBadge} ${user.role === "admin" ? styles.itemBadgeAlt : ""}`}
+                    style={{ fontSize: "11px", padding: "4px 10px" }}
+                  >
+                    {getRoleLabel(user.role)}
+                  </div>
+                  <div className={styles.actionMenu}>
+                    <button
+                      className={styles.dotsBtn}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveMenuId(
+                          activeMenuId === user.id ? null : user.id,
+                        );
+                      }}
+                    >
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <circle cx="12" cy="12" r="1" />
+                        <circle cx="12" cy="5" r="1" />
+                        <circle cx="12" cy="19" r="1" />
+                      </svg>
+                    </button>
+                    {activeMenuId === user.id && (
+                      <div className={styles.dropdown}>
+                        <button
+                          className={`${styles.dropdownItem} ${styles.dropdownItemDanger}`}
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            if (
+                              confirm(`Удалить пользователя ${user.name}?`) &&
+                              token
+                            ) {
+                              await deleteUser(token, user.id);
+                              loadUsers();
+                            }
+                            setActiveMenuId(null);
+                          }}
+                        >
+                          Удалить
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div className={styles.itemValueColumn}>
-                <span className={styles.itemValue} style={{ fontSize: "15px" }}>
-                  {user.role}
-                </span>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderEmployees = () => (
     <div className={styles.section}>
@@ -424,35 +573,99 @@ const AdminDashboard: React.FC = () => {
       <div className={styles.list}>
         {jkVotes.map((jk) => (
           <div key={jk.id} className={styles.listItem}>
-            <div className={styles.itemInfo} onClick={() => setEditingJk(jk)}>
-              <span className={styles.itemTitle}>{jk.name}</span>
-              <span className={styles.itemSub}>
-                {jk.address} • {jk.real_votes} + {jk.fake_votes} голосов (изменить)
-              </span>
-            </div>
-            <div style={{ display: "flex", gap: "8px" }}>
-              <button
-                className={styles.actionBtn}
-                onClick={() => toggleJkStatus(jk)}
-              >
-                {jk.status === "connected" ? "Отключить" : "Активировать"}
-              </button>
-              <button
-                className={styles.actionBtn}
+            <div
+              className={styles.itemInfo}
+              onClick={() => setEditingJk(jk)}
+              style={{ cursor: "pointer" }}
+            >
+              <div className={styles.itemTitleRow}>
+                <span className={styles.itemTitle}>{jk.name}</span>
+                <div
+                  className={`${styles.itemBadge} ${jk.status === "connected" ? styles.itemBadgeAlt : ""}`}
+                  style={{ fontSize: "10px", padding: "2px 8px" }}
+                >
+                  {jk.status === "connected" ? "АКТИВЕН" : "ОЖИДАЕТ"}
+                </div>
+              </div>
+              <span className={styles.itemSub}>{jk.address}</span>
+              <div
                 style={{
-                  backgroundColor: "#ff4d4f",
-                  color: "white",
-                  border: "none",
-                }}
-                onClick={async () => {
-                  if (confirm(`Удалить ${jk.name}?`)) {
-                    await deleteJk(token, jk.id);
-                    loadJks();
-                  }
+                  marginTop: "8px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
                 }}
               >
-                Удалить
-              </button>
+                <span
+                  style={{
+                    fontSize: "13px",
+                    fontWeight: "700",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  {jk.fake_votes}
+                </span>
+                <span
+                  style={{ fontSize: "13px", color: "var(--text-secondary)" }}
+                >
+                  всего (из них {jk.real_votes} реал.) • изменить
+                </span>
+              </div>
+            </div>
+            <div className={styles.itemValueColumn}>
+              <div className={styles.actionMenu}>
+                <button
+                  className={styles.dotsBtn}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveMenuId(activeMenuId === jk.id ? null : jk.id);
+                  }}
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="1" />
+                    <circle cx="12" cy="5" r="1" />
+                    <circle cx="12" cy="19" r="1" />
+                  </svg>
+                </button>
+                {activeMenuId === jk.id && (
+                  <div className={styles.dropdown}>
+                    <button
+                      className={styles.dropdownItem}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleJkStatus(jk);
+                        setActiveMenuId(null);
+                      }}
+                    >
+                      {jk.status === "connected"
+                        ? "Деактивировать"
+                        : "Активировать"}
+                    </button>
+                    <button
+                      className={`${styles.dropdownItem} ${styles.dropdownItemDanger}`}
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (confirm(`Удалить ${jk.name}?`) && token) {
+                          await deleteJk(token, jk.id);
+                          loadJks();
+                        }
+                        setActiveMenuId(null);
+                      }}
+                    >
+                      Удалить ЖК
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         ))}
@@ -466,11 +679,11 @@ const AdminDashboard: React.FC = () => {
   return (
     <div className={`${styles.wrapper} fade-in`}>
       <header className={styles.header}>
-        <div className={styles.logo}>
+        <Link to="/" className={styles.logo}>
           <span className={styles.logoTitle}>Не неси сам</span>
           <span className={styles.logoSubtitle}>АДМИНИСТРАТОР</span>
-        </div>
-        <button className={styles.actionBtn} onClick={() => navigate("/")}>
+        </Link>
+        <button className={styles.actionBtn} onClick={logout}>
           Выйти
         </button>
       </header>
@@ -526,20 +739,121 @@ const AdminDashboard: React.FC = () => {
             <div className={styles.list}>
               {tariffs.map((tariff) => (
                 <div key={tariff.id} className={styles.listItem}>
-                  <div className={styles.itemInfo}>
-                    <span className={styles.itemTitle}>
-                      {tariff.tag} - {tariff.title}
-                    </span>
-                    <span className={styles.itemSub}>
-                      {tariff.price}₽ / мес
-                    </span>
-                  </div>
-                  <button
-                    className={styles.actionBtn}
+                  <div
+                    className={styles.itemInfo}
                     onClick={() => setEditingTariff(tariff)}
+                    style={{ cursor: "pointer" }}
                   >
-                    Изменить
-                  </button>
+                    <div className={styles.itemTitleRow}>
+                      <span className={styles.itemTitle}>{tariff.title}</span>
+                      {tariff.is_popular && (
+                        <span
+                          style={{
+                            background: "#e3f9e5",
+                            color: "#1f7a28",
+                            padding: "2px 8px",
+                            borderRadius: "100px",
+                            fontSize: "10px",
+                            fontWeight: "800",
+                          }}
+                        >
+                          ПОПУЛЯРНЫЙ
+                        </span>
+                      )}
+                    </div>
+                    <span className={styles.itemSub}>
+                      {tariff.tag} • {tariff.price}₽ / мес
+                    </span>
+                    <div
+                      style={{
+                        marginTop: "8px",
+                        display: "flex",
+                        gap: "4px",
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      {tariff.features.slice(0, 2).map((f, i) => (
+                        <span
+                          key={i}
+                          style={{
+                            fontSize: "11px",
+                            color: "var(--text-secondary)",
+                            background: "var(--bg-color)",
+                            padding: "2px 6px",
+                            borderRadius: "4px",
+                          }}
+                        >
+                          {f}
+                        </span>
+                      ))}
+                      {tariff.features.length > 2 && (
+                        <span
+                          style={{
+                            fontSize: "11px",
+                            color: "var(--text-secondary)",
+                          }}
+                        >
+                          +{tariff.features.length - 2}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className={styles.itemValueColumn}>
+                    <div className={styles.actionMenu}>
+                      <button
+                        className={styles.dotsBtn}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveMenuId(
+                            activeMenuId === tariff.id ? null : tariff.id,
+                          );
+                        }}
+                      >
+                        <svg
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <circle cx="12" cy="12" r="1" />
+                          <circle cx="12" cy="5" r="1" />
+                          <circle cx="12" cy="19" r="1" />
+                        </svg>
+                      </button>
+                      {activeMenuId === tariff.id && (
+                        <div className={styles.dropdown}>
+                          <button
+                            className={styles.dropdownItem}
+                            onClick={() => {
+                              setEditingTariff(tariff);
+                              setActiveMenuId(null);
+                            }}
+                          >
+                            Изменить
+                          </button>
+                          <button
+                            className={`${styles.dropdownItem} ${styles.dropdownItemDanger}`}
+                            onClick={async () => {
+                              if (
+                                confirm(`Удалить тариф ${tariff.title}?`) &&
+                                token
+                              ) {
+                                await deleteTariff(token, tariff.id);
+                                loadTariffs();
+                              }
+                              setActiveMenuId(null);
+                            }}
+                          >
+                            Удалить
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -551,7 +865,7 @@ const AdminDashboard: React.FC = () => {
       {editingTariff && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalHeader}>
-            <div className={styles.modalTitle}>Настройка тарифа</div>
+            <div className={styles.modalTitle}>Настройка карточки тарифа</div>
             <button
               className={styles.closeBtn}
               onClick={() => setEditingTariff(null)}
@@ -560,47 +874,210 @@ const AdminDashboard: React.FC = () => {
             </button>
           </div>
           <div className={styles.modalContent}>
-            <div className={styles.block}>
-              <span className={styles.blockTitle}>Название (Тег)</span>
-              <input
-                type="text"
-                className={styles.inputSmall}
-                value={editingTariff.tag}
-                onChange={(e) =>
-                  setEditingTariff({ ...editingTariff, tag: e.target.value })
-                }
-              />
-            </div>
-            <div className={styles.block}>
-              <span className={styles.blockTitle}>Подзаголовок</span>
-              <input
-                type="text"
-                className={styles.inputSmall}
-                value={editingTariff.title}
-                onChange={(e) =>
-                  setEditingTariff({ ...editingTariff, title: e.target.value })
-                }
-              />
-            </div>
-            <div className={styles.block}>
-              <span className={styles.blockTitle}>Цена (₽/мес)</span>
-              <input
-                type="number"
-                className={styles.inputSmall}
-                value={editingTariff.price}
-                onChange={(e) =>
-                  setEditingTariff({
-                    ...editingTariff,
-                    price: Number(e.target.value),
-                  })
-                }
-              />
-            </div>
-            <button
-              className={styles.saveBtn}
-              onClick={handleUpdateTariff}
+            <div
+              style={{
+                background: "#f9f9fb",
+                padding: "20px",
+                borderRadius: "16px",
+                border: "1px dashed #d1d1d6",
+              }}
             >
-              Сохранить
+              <p
+                style={{
+                  fontSize: "12px",
+                  color: "#8e8e93",
+                  marginBottom: "16px",
+                  fontWeight: "700",
+                  textTransform: "uppercase",
+                }}
+              >
+                Структура карточки
+              </p>
+
+              <div className={styles.block}>
+                <span className={styles.blockTitle}>
+                  1. Синий бейдж (сверху)
+                </span>
+                <input
+                  type="text"
+                  className={styles.inputSmall}
+                  placeholder="ПОПУЛЯРНЫЙ"
+                  value={editingTariff.tag}
+                  onChange={(e) =>
+                    setEditingTariff({ ...editingTariff, tag: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className={styles.block} style={{ marginTop: "16px" }}>
+                <span className={styles.blockTitle}>
+                  2. Маленький заголовок (над названием)
+                </span>
+                <input
+                  type="text"
+                  className={styles.inputSmall}
+                  placeholder="КОМФОРТ"
+                  value={editingTariff.subtitle || ""}
+                  onChange={(e) =>
+                    setEditingTariff({
+                      ...editingTariff,
+                      subtitle: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              <div className={styles.block} style={{ marginTop: "16px" }}>
+                <span className={styles.blockTitle}>3. Главный заголовок</span>
+                <input
+                  type="text"
+                  className={styles.inputSmall}
+                  placeholder="Каждый день"
+                  value={editingTariff.title}
+                  onChange={(e) =>
+                    setEditingTariff({
+                      ...editingTariff,
+                      title: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              <div className={styles.block} style={{ marginTop: "16px" }}>
+                <span className={styles.blockTitle}>4. Цена за месяц</span>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "10px" }}
+                >
+                  <input
+                    type="number"
+                    className={styles.inputSmall}
+                    value={editingTariff.price}
+                    onChange={(e) =>
+                      setEditingTariff({
+                        ...editingTariff,
+                        price: Number(e.target.value),
+                      })
+                    }
+                  />
+                  <span style={{ fontWeight: "700" }}>₽</span>
+                </div>
+                <p
+                  style={{
+                    fontSize: "13px",
+                    color: "var(--text-secondary)",
+                    marginTop: "4px",
+                  }}
+                >
+                  ~{Math.round(editingTariff.price / 30)} ₽ / день
+                </p>
+              </div>
+
+              <div className={styles.block} style={{ marginTop: "16px" }}>
+                <span className={styles.blockTitle}>5. Список преимуществ</span>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "8px",
+                  }}
+                >
+                  {editingTariff.features.map((feature, index) => (
+                    <div key={index} style={{ display: "flex", gap: "8px" }}>
+                      <input
+                        type="text"
+                        className={styles.inputSmall}
+                        value={feature}
+                        onChange={(e) => {
+                          const newFeatures = [...editingTariff.features];
+                          newFeatures[index] = e.target.value;
+                          setEditingTariff({
+                            ...editingTariff,
+                            features: newFeatures,
+                          });
+                        }}
+                      />
+                      <button
+                        style={{
+                          color: "#ff3b30",
+                          padding: "0 8px",
+                          background: "none",
+                        }}
+                        onClick={() => {
+                          const newFeatures = editingTariff.features.filter(
+                            (_, i) => i !== index,
+                          );
+                          setEditingTariff({
+                            ...editingTariff,
+                            features: newFeatures,
+                          });
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    style={{
+                      color: "var(--accent-color)",
+                      fontWeight: "600",
+                      textAlign: "left",
+                      padding: "8px",
+                      background: "none",
+                    }}
+                    onClick={() =>
+                      setEditingTariff({
+                        ...editingTariff,
+                        features: [...editingTariff.features, ""],
+                      })
+                    }
+                  >
+                    + Добавить пункт
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.block}>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  cursor: "pointer",
+                  background: editingTariff.is_popular
+                    ? "#000"
+                    : "var(--card-bg)",
+                  padding: "16px",
+                  borderRadius: "12px",
+                  transition: "all 0.3s",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  style={{ width: "20px", height: "20px" }}
+                  checked={editingTariff.is_popular}
+                  onChange={(e) =>
+                    setEditingTariff({
+                      ...editingTariff,
+                      is_popular: e.target.checked,
+                    })
+                  }
+                />
+                <span
+                  style={{
+                    color: editingTariff.is_popular
+                      ? "#fff"
+                      : "var(--text-primary)",
+                    fontWeight: "700",
+                  }}
+                >
+                  Выделить как "ПОПУЛЯРНЫЙ" (черная карточка)
+                </span>
+              </label>
+            </div>
+
+            <button className={styles.saveBtn} onClick={handleUpdateTariff}>
+              Сохранить изменения
             </button>
           </div>
         </div>
@@ -650,7 +1127,7 @@ const AdminDashboard: React.FC = () => {
       {editingJk && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalHeader}>
-            <div className={styles.modalTitle}>Настройка голосов</div>
+            <div className={styles.modalTitle}>Настройка ЖК</div>
             <button
               className={styles.closeBtn}
               onClick={() => setEditingJk(null)}
@@ -660,13 +1137,44 @@ const AdminDashboard: React.FC = () => {
           </div>
           <div className={styles.modalContent}>
             <div className={styles.block}>
+              <span className={styles.blockTitle}>Название ЖК</span>
+              <input
+                type="text"
+                className={styles.inputSmall}
+                value={editingJk.name}
+                onChange={(e) =>
+                  setEditingJk({
+                    ...editingJk,
+                    name: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <div className={styles.block}>
+              <span className={styles.blockTitle}>Адрес</span>
+              <input
+                type="text"
+                className={styles.inputSmall}
+                value={editingJk.address}
+                onChange={(e) =>
+                  setEditingJk({
+                    ...editingJk,
+                    address: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <div className={styles.block}>
               <span className={styles.blockTitle}>Количество голосов</span>
               <input
                 type="number"
                 className={styles.inputSmall}
                 value={editingJk.fake_votes}
                 onChange={(e) =>
-                  setEditingJk({ ...editingJk, fake_votes: Number(e.target.value) })
+                  setEditingJk({
+                    ...editingJk,
+                    fake_votes: Number(e.target.value),
+                  })
                 }
               />
               <p
@@ -683,9 +1191,15 @@ const AdminDashboard: React.FC = () => {
             <button
               className={styles.saveBtn}
               onClick={async () => {
-                if (editingJk) {
+                if (editingJk && token) {
                   try {
-                    await updateJk(token, editingJk.id, editingJk);
+                    // Update all fields: name, address, fake_votes (stored as 'votes' in DB logic often, but API handles it)
+                    await updateJk(token, editingJk.id, {
+                      name: editingJk.name,
+                      address: editingJk.address,
+                      votes: editingJk.fake_votes,
+                      status: editingJk.status,
+                    });
                     loadJks();
                     setEditingJk(null);
                   } catch (err) {
@@ -695,7 +1209,7 @@ const AdminDashboard: React.FC = () => {
                 }
               }}
             >
-              Сохранить
+              Сохранить изменения
             </button>
           </div>
         </div>

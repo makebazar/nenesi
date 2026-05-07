@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import styles from "./WorkerDashboard.module.css";
+import { useAuth } from "../context/AuthContext";
+import { Link } from "react-router-dom";
 
 type Tab = "tasks" | "profile";
 
@@ -30,6 +32,7 @@ const WorkerDashboard: React.FC = () => {
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [activeTaskId, setActiveTaskId] = useState<number | null>(null);
   const [pendingSync, setPendingSync] = useState(0);
+  const { logout } = useAuth();
 
   const [jks, setJks] = useState<JKGroup[]>([
     {
@@ -159,7 +162,7 @@ const WorkerDashboard: React.FC = () => {
   return (
     <div className={`${styles.wrapper} fade-in`}>
       <header className={styles.header}>
-        <div className={styles.logo}>
+        <Link to="/" className={styles.logo}>
           <div className={styles.logoTitle}>НЕ НЕСИ САМ</div>
           <div className={styles.logoSubtitle}>
             воркер{" "}
@@ -169,7 +172,7 @@ const WorkerDashboard: React.FC = () => {
                 ? "• в работе"
                 : "• смена"}
           </div>
-        </div>
+        </Link>
         <div className={styles.headerRight}>
           {pendingSync > 0 && (
             <div className={styles.syncBadge}>
@@ -377,7 +380,9 @@ const WorkerDashboard: React.FC = () => {
                 </div>
               </div>
             </section>
-            <button className={styles.logoutBtn}>Выйти из аккаунта</button>
+            <button className={styles.logoutBtn} onClick={logout}>
+              Выйти из аккаунта
+            </button>
           </div>
         )}
       </main>

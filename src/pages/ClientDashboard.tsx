@@ -4,54 +4,56 @@ import {
   fetchUserProfile,
   voteForSchedule,
   voteForTariff,
+  fetchTariffs,
   type User,
+  type Tariff,
 } from "../services/api";
+import { useAuth } from "../context/AuthContext";
+
+import { Link } from "react-router-dom";
 
 type EditingSection = null | "address" | "schedule" | "plan" | "payment";
 
 const ClientDashboard: React.FC = () => {
   const [editingSection, setEditingSection] = useState<EditingSection>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const { user: authUser, token, logout } = useAuth();
+  const [user, setUser] = useState<User | null>(authUser);
+  const [tariffs, setTariffs] = useState<Tariff[]>([]);
 
   useEffect(() => {
-    const loadUser = async () => {
-      const token = localStorage.getItem("token");
+    const loadData = async () => {
       if (token) {
         try {
-          const userData = await fetchUserProfile(token);
+          const [userData, tariffData] = await Promise.all([
+            fetchUserProfile(token),
+            fetchTariffs(),
+          ]);
           console.log("Loaded user data with votes:", userData);
           setUser(userData);
+          setTariffs(tariffData);
           if (userData.schedule_vote) setVotedTime(userData.schedule_vote);
           if (userData.tariff_vote) setVotedTariff(userData.tariff_vote);
         } catch (error) {
-          console.error("Failed to fetch user profile:", error);
+          console.error("Failed to fetch dashboard data:", error);
         }
       }
     };
-    loadUser();
-  }, []);
+    loadData();
+  }, [token]);
 
   const [votedTime, setVotedTime] = useState<string | null>(null);
   const [votedTariff, setVotedTariff] = useState<string | null>(null);
 
   const timeSlots = [
-    { id: "morning", label: "Утро" },
-    { id: "evening", label: "Вечер" },
+    { id: "morning", label: "Утро (8:00 - 10:00)" },
+    { id: "evening", label: "Вечер (20:00 - 22:00)" },
   ];
-
-  const plans = [
-    { id: "economy", name: "Эконом", price: "790 ₽", desc: "Через день" },
-    { id: "comfort", name: "Комфорт", price: "990 ₽", desc: "Каждый день" },
-  ];
-
-  const [plan, setPlan] = useState(plans[0]);
 
   const handleSave = () => {
     setEditingSection(null);
   };
 
   const handleTariffVote = async (tariffName: string) => {
-    const token = localStorage.getItem("token");
     if (token) {
       try {
         await voteForTariff(token, tariffName);
@@ -63,7 +65,6 @@ const ClientDashboard: React.FC = () => {
   };
 
   const handleVote = async (voteOption: "morning" | "evening") => {
-    const token = localStorage.getItem("token");
     if (token) {
       try {
         await voteForSchedule(token, voteOption);
@@ -85,10 +86,10 @@ const ClientDashboard: React.FC = () => {
           >
             ← Назад
           </button>
-          <div className={styles.logo}>
+          <Link to="/" className={styles.logo}>
             <div className={styles.logoTitle}>НЕ НЕСИ САМ</div>
             <div className={styles.logoSubtitle}>сервис по выносу мусора</div>
-          </div>
+          </Link>
         </header>
         <main className={styles.main}>
           <div className={styles.pageHeader}>
@@ -179,10 +180,10 @@ const ClientDashboard: React.FC = () => {
           >
             ← Назад
           </button>
-          <div className={styles.logo}>
+          <Link to="/" className={styles.logo}>
             <div className={styles.logoTitle}>НЕ НЕСИ САМ</div>
             <div className={styles.logoSubtitle}>сервис по выносу мусора</div>
-          </div>
+          </Link>
         </header>
         <main className={styles.main}>
           <div className={styles.pageHeader}>
@@ -193,17 +194,17 @@ const ClientDashboard: React.FC = () => {
           </div>
           <div className={styles.editForm}>
             <div className={styles.slotsList}>
-              {plans.map((p) => (
+              {tariffs.map((p) => (
                 <button
                   key={p.id}
-                  className={`${styles.slotBtn} ${plan.id === p.id ? styles.slotBtnActive : ""}`}
-                  onClick={() => setPlan(p)}
+                  className={`${styles.slotBtn} ${votedTariff === p.title ? styles.slotBtnActive : ""}`}
+                  onClick={() => handleTariffVote(p.title)}
                 >
                   <div className={styles.planSelectInfo}>
-                    <span className={styles.slotTime}>{p.name}</span>
-                    <span className={styles.planSelectDesc}>{p.desc}</span>
+                    <span className={styles.slotTime}>{p.title}</span>
+                    <span className={styles.planSelectDesc}>{p.tag}</span>
                   </div>
-                  <span className={styles.planSelectPrice}>{p.price}</span>
+                  <span className={styles.planSelectPrice}>{p.price} ₽</span>
                 </button>
               ))}
             </div>
@@ -223,16 +224,50 @@ const ClientDashboard: React.FC = () => {
   return (
     <div className={`${styles.wrapper} fade-in`}>
       <header className={styles.header}>
-        <div className={styles.logo}>
+        <Link to="/" className={styles.logo}>
           <div className={styles.logoTitle}>НЕ НЕСИ САМ</div>
           <div className={styles.logoSubtitle}>сервис по выносу мусора</div>
-        </div>
+        </Link>
+        <button className={styles.logoutBtn} onClick={logout}>
+          Выйти
+        </button>
       </header>
 
       <main className={styles.main}>
         <div className={styles.pageHeader}>
           <h1 className={styles.pageTitle}>Личный кабинет</h1>
         </div>
+
+        <section className={styles.promoSection}>
+          <div className={styles.promoCard}>
+            <span className={styles.promoIcon}>🚀</span>
+            <h3 className={styles.promoTitle}>Готовимся к запуску!</h3>
+            <p className={styles.promoText}>
+              Сейчас мы собираем заявки в вашем доме. Как только наберется
+              нужное количество участников, мы свяжемся с вами и запустим
+              сервис.
+            </p>
+            <div className={styles.giftVoucher}>
+              <div className={styles.voucherContent}>
+                <div className={styles.voucherTop}>
+                  <span className={styles.voucherTitle}>
+                    ПОДАРОК ЗА ОЖИДАНИЕ
+                  </span>
+                </div>
+
+                <div className={styles.voucherBody}>
+                  <span className={styles.voucherValue}>14 дней</span>
+                  <span className={styles.voucherLabel}>
+                    бесплатного сервиса
+                  </span>
+                </div>
+                <p className={styles.voucherNote}>
+                  Будет активирован автоматически в первый месяц работы
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
 
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
@@ -245,6 +280,7 @@ const ClientDashboard: React.FC = () => {
             </button>
           </div>
           <div className={styles.addressDisplay}>
+            {user.jk_name && <p className={styles.jkName}>{user.jk_name}</p>}
             <h2 className={styles.addressMain}>{user.street}</h2>
             <p className={styles.addressDetails}>
               Подъезд {user.entrance}, этаж {user.floor}, кв. {user.apartment}
@@ -291,24 +327,53 @@ const ClientDashboard: React.FC = () => {
             Мы собираем обратную связь, чтобы сделать наши тарифы лучше.
           </p>
           <div className={styles.slotsList}>
-            {plans.map((p) => (
+            {tariffs.map((t) => (
               <button
-                key={p.id}
-                className={`${styles.slotBtn} ${votedTariff === p.name ? styles.slotBtnActive : ""}`}
-                onClick={() => handleTariffVote(p.name)}
+                key={t.id}
+                className={`${styles.tariffCard} ${votedTariff === t.title ? styles.tariffCardActive : ""} ${t.is_popular ? styles.tariffCardPopular : ""}`}
+                onClick={() => handleTariffVote(t.title)}
               >
-                <div className={styles.planSelectInfo}>
-                  <span className={styles.slotTime}>{p.name}</span>
-                  <span className={styles.planSelectDesc}>{p.desc}</span>
+                <div className={styles.tariffMainInfo}>
+                  <div className={styles.tariffHeader}>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "4px",
+                      }}
+                    >
+                      {t.subtitle && (
+                        <span
+                          style={{
+                            fontSize: "11px",
+                            fontWeight: "700",
+                            opacity: 0.6,
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          {t.subtitle}
+                        </span>
+                      )}
+                      <span className={styles.tariffName}>{t.title}</span>
+                    </div>
+                    <span className={styles.tariffPrice}>{t.price} ₽</span>
+                  </div>
+                  <p className={styles.tariffTagline}>
+                    ~{Math.round(t.price / 30)} ₽ / день
+                  </p>
+                  <ul className={styles.tariffFeaturesList}>
+                    {t.features.map((feature, idx) => (
+                      <li key={idx} className={styles.tariffFeatureItem}>
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <div
-                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
-                >
-                  <span className={styles.planSelectPrice}>{p.price}</span>
-                  {votedTariff === p.name && (
-                    <span className={styles.slotCheck}>✓</span>
-                  )}
-                </div>
+                {votedTariff === t.title && (
+                  <div className={styles.selectionIndicator}>
+                    <span className={styles.checkIcon}>✓</span>
+                  </div>
+                )}
               </button>
             ))}
           </div>

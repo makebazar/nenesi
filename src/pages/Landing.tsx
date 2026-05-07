@@ -173,18 +173,15 @@ const Landing: React.FC = () => {
                   <div className={styles.progressBar}>
                     <div
                       className={styles.progressFill}
-                      style={{ width: `${Math.min(jk.votes, 100)}%` }}
+                      style={{
+                        width: `${Math.min(jk.fake_votes, 100)}%`,
+                      }}
                     ></div>
                   </div>
                   <div className={styles.progressLabels}>
                     <span className={styles.progressText}>
-                      Собрано {jk.votes} из 100 заявок
+                      Собрано {Math.min(jk.fake_votes, 100)} из 100 заявок
                     </span>
-                    {jk.votes > 0 && jk.status === "pending" && (
-                      <span className={styles.activePulse}>
-                        <span className={styles.dot}></span> +1 сегодня
-                      </span>
-                    )}
                   </div>
                 </div>
 
@@ -218,10 +215,12 @@ const Landing: React.FC = () => {
                 key={tariff.id}
                 className={`${styles.priceCard} ${tariff.is_popular ? styles.priceCardFeatured : ""}`}
               >
-                {tariff.is_popular && (
-                  <div className={styles.priceBadge}>ПОПУЛЯРНЫЙ</div>
+                {tariff.is_popular && tariff.tag && (
+                  <div className={styles.priceBadge}>{tariff.tag}</div>
                 )}
-                <div className={styles.priceTag}>{tariff.tag}</div>
+                {tariff.subtitle && (
+                  <div className={styles.priceTag}>{tariff.subtitle}</div>
+                )}
                 <h3 className={styles.priceTitle}>{tariff.title}</h3>
                 <div className={styles.priceAmount}>
                   {tariff.price} ₽ <small>/ мес</small>
@@ -235,7 +234,9 @@ const Landing: React.FC = () => {
                   ))}
                 </ul>
                 <button
-                  className={tariff.is_popular ? styles.ctaPrimary : styles.ctaSecondary}
+                  className={
+                    tariff.is_popular ? styles.ctaPrimary : styles.ctaSecondary
+                  }
                   onClick={() => navigate("/login")}
                 >
                   Начать бесплатно

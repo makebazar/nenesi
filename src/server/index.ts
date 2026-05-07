@@ -59,14 +59,20 @@ const isAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
   }
 };
 
+// --- UTILS ---
+const normalizePhone = (phone: string) => {
+  return phone.replace(/\D/g, "");
+};
+
 // --- AUTH ---
 app.post("/api/auth/login", async (req: Request, res: Response) => {
   const { phone } = req.body;
   if (!phone) return res.status(400).json({ message: "Phone is required" });
+  const cleanPhone = normalizePhone(phone);
 
   try {
     const result = await pool.query("SELECT * FROM users WHERE phone = $1", [
-      phone,
+      cleanPhone,
     ]);
     if (result.rows.length > 0) {
       const user = result.rows[0];
@@ -84,6 +90,7 @@ app.post("/api/auth/login", async (req: Request, res: Response) => {
 app.post("/api/auth/register", async (req: Request, res: Response) => {
   const { phone, name, role, address } = req.body;
   if (!phone) return res.status(400).json({ message: "Phone is required" });
+  const cleanPhone = normalizePhone(phone);
 
   const client = await pool.connect();
   try {
@@ -92,22 +99,23 @@ app.post("/api/auth/register", async (req: Request, res: Response) => {
     // 1. Create or get user
     const userRes = await client.query(
       "INSERT INTO users (phone, name, role) VALUES ($1, $2, $3) ON CONFLICT (phone) DO UPDATE SET name = EXCLUDED.name RETURNING *",
-      [phone, name || "User", role || "client"],
+      [cleanPhone, name || "User", role || "client"],
     );
-    const user = userRes.rows[0];
-
     // 2. Create address if provided
     if (address) {
       await client.query(
         `INSERT INTO user_addresses (user_id, jk_id, street, entrance, floor, apartment, intercom)
          VALUES ($1, $2, $3, $4, $5, $6, $7)
          ON CONFLICT (user_id) DO UPDATE SET
-            jk_id = EXCLUDED.jk_id, street = EXCLUDED.street,
-            entrance = EXCLUDED.entrance, floor = EXCLUDED.floor,
-            apartment = EXCLUDED.apartment, intercom = EXCLUDED.intercom`,
+            jk_id = EXCLUDED.jk_id,
+            street = EXCLUDED.street,
+            entrance = EXCLUDED.entrance,
+            floor = EXCLUDED.floor,
+            apartment = EXCLUDED.apartment,
+            intercom = EXCLUDED.intercom`,
         [
           user.id,
-          address.jkId || null,
+          address.jkId,
           address.street,
           address.entrance,
           address.floor,
@@ -115,15 +123,23 @@ app.post("/api/auth/register", async (req: Request, res: Response) => {
           address.intercom,
         ],
       );
-    }
 
+      // Increment total votes for the JK on new registration
+      await client.query(
+        "UPDATE residential_complexes SET votes = votes + 1 WHERE id = $1",
+        [address.jkId],
+      );
+    }
     await client.query("COMMIT");
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET);
     res.json({ user, token });
   } catch (err) {
     await client.query("ROLLBACK");
-    console.error("Registration error:", err);
-    res.status(500).json({ error: "Registration failed" });
+    console.error("Registration error full details:", err);
+    res.status(500).json({
+      error: "Registration failed",
+      details: err instanceof Error ? err.message : String(err),
+    });
   } finally {
     client.release();
   }
@@ -208,13 +224,30 @@ app.get(
     try {
       const result = await pool.query(`
       SELECT u.id, u.phone, u.name, u.role, u.created_at,
-             ua.street, ua.entrance, ua.floor, ua.apartment, ua.intercom, rc.name as jk_name
+             ua.street, ua.entrance, ua.floor, ua.apartment, ua.intercom, rc.name as jk_name,
+             sv.vote_option as schedule_vote, tv.tariff_name as tariff_vote
       FROM users u
       LEFT JOIN user_addresses ua ON u.id = ua.user_id
       LEFT JOIN residential_complexes rc ON ua.jk_id = rc.id
+      LEFT JOIN schedule_votes sv ON u.id = sv.user_id
+      LEFT JOIN tariff_votes tv ON u.id = tv.user_id
       ORDER BY u.created_at DESC
     `);
       res.json(result.rows);
+    } catch (err) {
+      res.status(500).json({ error: "DB Error" });
+    }
+  },
+);
+
+app.delete(
+  "/api/users/:id",
+  authenticateToken,
+  isAdmin,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      await pool.query("DELETE FROM users WHERE id = $1", [req.params.id]);
+      res.json({ success: true });
     } catch (err) {
       res.status(500).json({ error: "DB Error" });
     }
@@ -229,10 +262,27 @@ app.get("/api/jk", async (_req: Request, res: Response) => {
       FROM residential_complexes rc
       LEFT JOIN user_addresses ua ON rc.id = ua.jk_id
       GROUP BY rc.id
-      ORDER BY (rc.votes + COUNT(ua.user_id)) DESC
+      ORDER BY real_votes DESC
     `);
     res.json(result.rows);
   } catch (err) {
+    res.status(500).json({ error: "DB Error" });
+  }
+});
+
+app.post("/api/jk/:id/vote", async (req: Request, res: Response) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query(
+      "UPDATE residential_complexes SET votes = votes + 1 WHERE id = $1 RETURNING *",
+      [id],
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "JK not found" });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("JK vote error:", err);
     res.status(500).json({ error: "DB Error" });
   }
 });
@@ -320,15 +370,30 @@ app.put(
   isAdmin,
   async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
-    const { tag, title, price, features, is_popular } = req.body;
+    const { tag, subtitle, title, price, features, is_popular } = req.body;
     try {
       const result = await pool.query(
-        "UPDATE tariffs SET tag = $1, title = $2, price = $3, features = $4, is_popular = $5 WHERE id = $6 RETURNING *",
-        [tag, title, price, features, is_popular, id],
+        "UPDATE tariffs SET tag = $1, subtitle = $2, title = $3, price = $4, features = $5, is_popular = $6 WHERE id = $7 RETURNING *",
+        [tag, subtitle, title, price, features, is_popular, id],
       );
       res.json(result.rows[0]);
     } catch (err) {
       console.error("PUT /api/tariffs/:id Error:", err);
+      res.status(500).json({ error: "DB Error" });
+    }
+  },
+);
+
+app.delete(
+  "/api/tariffs/:id",
+  authenticateToken,
+  isAdmin,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      await pool.query("DELETE FROM tariffs WHERE id = $1", [req.params.id]);
+      res.json({ success: true });
+    } catch (err) {
+      console.error("DELETE /api/tariffs/:id Error:", err);
       res.status(500).json({ error: "DB Error" });
     }
   },

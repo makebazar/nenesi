@@ -11,7 +11,7 @@ const DEFAULT_TARIFFS: Tariff[] = [
   {
     id: 1,
     tag: "ЭКОНОМ",
-    title: "Через день",
+    title: "Эконом",
     price: 790,
     features: [
       "Вынос мусора каждые 2 дня",
@@ -24,7 +24,7 @@ const DEFAULT_TARIFFS: Tariff[] = [
   {
     id: 2,
     tag: "КОМФОРТ",
-    title: "Каждый день",
+    title: "Комфорт",
     price: 990,
     features: [
       "Вынос мусора ежедневно",

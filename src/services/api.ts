@@ -142,6 +142,16 @@ export const fetchUsers = async (token: string): Promise<User[]> => {
   return response.json();
 };
 
+export const deleteUser = async (token: string, id: number): Promise<void> => {
+  const response = await fetch(`${API_URL}/users/${id}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) throw new Error("Failed to delete user");
+};
+
 export const voteForSchedule = async (
   token: string,
   voteOption: "morning" | "evening",
@@ -214,6 +224,7 @@ export const fetchTariffVotes = async (
 export interface Tariff {
   id: number;
   tag: string;
+  subtitle?: string;
   title: string;
   price: number;
   features: string[];
@@ -224,6 +235,19 @@ export const fetchTariffs = async (): Promise<Tariff[]> => {
   const response = await fetch(`${API_URL}/tariffs`);
   if (!response.ok) throw new Error("Failed to fetch tariffs");
   return response.json();
+};
+
+export const deleteTariff = async (
+  token: string,
+  id: number,
+): Promise<void> => {
+  const response = await fetch(`${API_URL}/tariffs/${id}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) throw new Error("Failed to delete tariff");
 };
 
 export const updateTariff = async (

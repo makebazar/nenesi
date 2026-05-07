@@ -1,10 +1,21 @@
 import React, { useState, useEffect } from "react";
 import styles from "./Login.module.css";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { IMaskInput } from "react-imask";
-import { login, register, fetchJks, voteForJk, type JK } from "../services/api";
+import {
+  login as apiLogin,
+  register,
+  fetchJks,
+  fetchTariffs,
+  voteForJk,
+  voteForSchedule,
+  voteForTariff,
+  type JK,
+  type Tariff,
+} from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
-type Step = "phone" | "profile" | "address";
+type Step = "phone" | "profile" | "address" | "schedule" | "tariff";
 
 const Login: React.FC = () => {
   const [phone, setPhone] = useState("");
@@ -16,18 +27,41 @@ const Login: React.FC = () => {
   const [apartment, setApartment] = useState("");
   const [intercom, setIntercom] = useState("");
 
+  const [scheduleVote, setScheduleVote] = useState<
+    "morning" | "evening" | null
+  >(null);
+  const [selectedTariff, setSelectedTariff] = useState<string | null>(null);
+
   const [step, setStep] = useState<Step>("phone");
   const navigate = useNavigate();
+  const { login, user } = useAuth();
 
   const [jks, setJks] = useState<JK[]>([]);
+  const [tariffs, setTariffs] = useState<Tariff[]>([]);
+
+  useEffect(() => {
+    if (user) {
+      const target =
+        user.role === "admin"
+          ? "/admin"
+          : user.role === "worker"
+            ? "/worker"
+            : "/client";
+      navigate(target, { replace: true });
+    }
+  }, [user, navigate]);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const data = await fetchJks();
-        setJks(data);
+        const [jkData, tariffData] = await Promise.all([
+          fetchJks(),
+          fetchTariffs(),
+        ]);
+        setJks(jkData);
+        setTariffs(tariffData);
       } catch (err) {
-        console.error("Failed to fetch JKs:", err);
+        console.error("Failed to fetch data:", err);
       }
     };
     loadData();
@@ -36,14 +70,9 @@ const Login: React.FC = () => {
   const handleContinue = async () => {
     if (step === "phone") {
       try {
-        const authData = await login(phone);
+        const authData = await apiLogin(phone);
         if (authData) {
-          localStorage.setItem("token", authData.token);
-          localStorage.setItem("user", JSON.stringify(authData.user));
-
-          if (authData.user.role === "admin") navigate("/admin");
-          else if (authData.user.role === "worker") navigate("/worker");
-          else navigate("/client");
+          login(authData.token, authData.user);
         } else {
           setStep("profile");
         }
@@ -52,8 +81,13 @@ const Login: React.FC = () => {
         setStep("profile");
       }
     } else if (step === "profile") {
-      setStep("address");
-    } else {
+      if (name.trim()) setStep("address");
+    } else if (step === "address") {
+      if (street.trim()) setStep("schedule");
+    } else if (step === "schedule") {
+      if (scheduleVote) setStep("tariff");
+    } else if (step === "tariff") {
+      if (!selectedTariff) return;
       try {
         const authData = await register({
           phone,
@@ -62,20 +96,16 @@ const Login: React.FC = () => {
           address: { jkId, street, entrance, floor, apartment, intercom },
         });
 
-        localStorage.setItem("token", authData.token);
-        localStorage.setItem("user", JSON.stringify(authData.user));
+        const token = authData.token;
 
-        if (jkId) {
-          try {
-            await voteForJk(Number(jkId));
-          } catch (vErr) {
-            console.error("Voting error:", vErr);
-          }
-        }
+        // Submit votes in parallel
+        await Promise.all([
+          voteForSchedule(token, scheduleVote!),
+          voteForTariff(token, selectedTariff!),
+          jkId ? voteForJk(Number(jkId)) : Promise.resolve(),
+        ]);
 
-        if (authData.user.role === "admin") navigate("/admin");
-        else if (authData.user.role === "worker") navigate("/worker");
-        else navigate("/client");
+        login(authData.token, authData.user);
       } catch (err) {
         console.error("Registration error:", err);
         alert("Ошибка регистрации. Проверьте данные.");
@@ -86,6 +116,8 @@ const Login: React.FC = () => {
   const handleBack = () => {
     if (step === "profile") setStep("phone");
     else if (step === "address") setStep("profile");
+    else if (step === "schedule") setStep("address");
+    else if (step === "tariff") setStep("schedule");
   };
 
   return (
@@ -96,10 +128,10 @@ const Login: React.FC = () => {
             ← Назад
           </button>
         ) : (
-          <div className={styles.logo}>
+          <Link to="/" className={styles.logo}>
             <div className={styles.logoTitle}>НЕ НЕСИ САМ</div>
             <div className={styles.logoSubtitle}>сервис по выносу мусора</div>
-          </div>
+          </Link>
         )}
       </header>
 
@@ -217,12 +249,74 @@ const Login: React.FC = () => {
             </>
           )}
 
-          <button className={styles.submitBtn} onClick={handleContinue}>
-            {step === "address" ? "Завершить" : "Продолжить"}
+          {step === "schedule" && (
+            <>
+              <h1 className={styles.title}>Когда удобно выставлять мусор?</h1>
+              <p className={styles.subtitle}>
+                Мы на предзапуске собираем отзывы, <br /> чтобы сделать сервис
+                удобнее
+              </p>
+              <div className={styles.optionsList}>
+                <button
+                  className={`${styles.optionBtn} ${scheduleVote === "morning" ? styles.optionBtnActive : ""}`}
+                  onClick={() => setScheduleVote("morning")}
+                >
+                  Утром (с 8:00 до 10:00)
+                </button>
+                <button
+                  className={`${styles.optionBtn} ${scheduleVote === "evening" ? styles.optionBtnActive : ""}`}
+                  onClick={() => setScheduleVote("evening")}
+                >
+                  Вечером (с 20:00 до 22:00)
+                </button>
+              </div>
+            </>
+          )}
+
+          {step === "tariff" && (
+            <>
+              <h1 className={styles.title}>Какой тариф интересует?</h1>
+              <p className={styles.subtitle}>
+                Выберите тариф, который вам <br /> подходит больше всего
+              </p>
+              <div className={styles.tariffsList}>
+                {tariffs.map((tariff) => (
+                  <button
+                    key={tariff.id}
+                    className={`${styles.tariffOption} ${selectedTariff === tariff.title ? styles.tariffOptionActive : ""}`}
+                    onClick={() => setSelectedTariff(tariff.title)}
+                  >
+                    <div className={styles.tariffTitleRow}>
+                      <span className={styles.tariffTag}>{tariff.tag}</span>
+                      <span className={styles.tariffPrice}>
+                        {tariff.price} ₽
+                      </span>
+                    </div>
+                    <div className={styles.tariffDesc}>{tariff.title}</div>
+                    <ul className={styles.tariffFeatures}>
+                      {tariff.features.map((f, i) => (
+                        <li key={i}>{f}</li>
+                      ))}
+                    </ul>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          <button
+            className={styles.submitBtn}
+            onClick={handleContinue}
+            disabled={
+              (step === "schedule" && !scheduleVote) ||
+              (step === "tariff" && !selectedTariff)
+            }
+          >
+            {step === "tariff" ? "Завершить" : "Продолжить"}
           </button>
 
           <p className={styles.policy}>
-            Нажимая «{step === "address" ? "Завершить" : "Продолжить"}», вы
+            Нажимая «{step === "tariff" ? "Завершить" : "Продолжить"}», вы
             соглашаетесь с <br />
             <span>условиями использования сервиса</span>
           </p>
