@@ -398,7 +398,10 @@ const AdminDashboard: React.FC = () => {
             const address = [
               user.jk_name,
               user.street,
+              user.entrance ? `под. ${user.entrance}` : null,
+              user.floor ? `эт. ${user.floor}` : null,
               user.apartment ? `кв. ${user.apartment}` : null,
+              user.intercom ? `код: ${user.intercom}` : null,
             ]
               .filter(Boolean)
               .join(", ");
