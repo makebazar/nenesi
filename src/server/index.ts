@@ -30,8 +30,13 @@ app.get("/health", (_req, res) => {
   res.send("OK");
 });
 
+interface UserPayload {
+  id: number;
+  role: "client" | "worker" | "admin";
+}
+
 interface AuthRequest extends Request {
-  user?: any;
+  user?: UserPayload;
 }
 
 // --- MIDDLEWARE ---
@@ -44,9 +49,9 @@ const authenticateToken = (
   const token = authHeader && authHeader.split(" ")[1];
   if (!token) return res.sendStatus(401);
 
-  jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
+  jwt.verify(token, JWT_SECRET, (err: unknown, user: unknown) => {
     if (err) return res.sendStatus(403);
-    req.user = user;
+    req.user = user as UserPayload;
     next();
   });
 };
@@ -81,8 +86,8 @@ app.post("/api/auth/login", async (req: Request, res: Response) => {
     } else {
       res.status(404).json({ message: "User not found" });
     }
-  } catch (err) {
-    console.error("Login error:", err);
+  } catch (_err) {
+    console.error("Login error:", _err);
     res.status(500).json({ error: "Auth error" });
   }
 });
@@ -135,12 +140,12 @@ app.post("/api/auth/register", async (req: Request, res: Response) => {
     await client.query("COMMIT");
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET);
     res.json({ user, token });
-  } catch (err) {
+  } catch (_err) {
     await client.query("ROLLBACK");
-    console.error("Registration error full details:", err);
+    console.error("Registration error full details:", _err);
     res.status(500).json({
       error: "Registration failed",
-      details: err instanceof Error ? err.message : String(err),
+      details: _err instanceof Error ? _err.message : String(_err),
     });
   } finally {
     client.release();
@@ -153,6 +158,7 @@ app.get(
   authenticateToken,
   async (req: AuthRequest, res: Response) => {
     try {
+      if (!req.user) return res.status(401).json({ error: "Unauthorized" });
       const result = await pool.query(
         `
       SELECT u.*, ua.*, rc.name as jk_name,
@@ -167,7 +173,7 @@ app.get(
         [req.user.id],
       );
       res.json(result.rows[0]);
-    } catch (err) {
+    } catch {
       res.status(500).json({ error: "Internal error" });
     }
   },
@@ -179,6 +185,7 @@ app.post(
   async (req: AuthRequest, res: Response) => {
     const { tariffName } = req.body;
     try {
+      if (!req.user) return res.status(401).json({ error: "Unauthorized" });
       await pool.query(
         `
       INSERT INTO tariff_votes (user_id, tariff_name)
@@ -188,7 +195,7 @@ app.post(
         [req.user.id, tariffName],
       );
       res.json({ success: true });
-    } catch (err) {
+    } catch {
       res.status(500).json({ error: "DB Error" });
     }
   },
@@ -200,6 +207,7 @@ app.post(
   async (req: AuthRequest, res: Response) => {
     const { voteOption } = req.body;
     try {
+      if (!req.user) return res.status(401).json({ error: "Unauthorized" });
       await pool.query(
         `
       INSERT INTO schedule_votes (user_id, vote_option)
@@ -209,7 +217,7 @@ app.post(
         [req.user.id, voteOption],
       );
       res.json({ success: true });
-    } catch (err) {
+    } catch {
       res.status(500).json({ error: "DB Error" });
     }
   },
@@ -236,7 +244,7 @@ app.get(
       ORDER BY u.created_at DESC
     `);
       res.json(result.rows);
-    } catch (err) {
+    } catch {
       res.status(500).json({ error: "DB Error" });
     }
   },
@@ -250,7 +258,7 @@ app.delete(
     try {
       await pool.query("DELETE FROM users WHERE id = $1", [req.params.id]);
       res.json({ success: true });
-    } catch (err) {
+    } catch {
       res.status(500).json({ error: "DB Error" });
     }
   },
@@ -267,7 +275,7 @@ app.get("/api/jk", async (_req: Request, res: Response) => {
       ORDER BY real_votes DESC
     `);
     res.json(result.rows);
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "DB Error" });
   }
 });
@@ -283,8 +291,8 @@ app.post("/api/jk/:id/vote", async (req: Request, res: Response) => {
       return res.status(404).json({ error: "JK not found" });
     }
     res.json(result.rows[0]);
-  } catch (err) {
-    console.error("JK vote error:", err);
+  } catch (_err) {
+    console.error("JK vote error:", _err);
     res.status(500).json({ error: "DB Error" });
   }
 });
@@ -360,8 +368,8 @@ app.get("/api/tariffs", async (_req: Request, res: Response) => {
   try {
     const result = await pool.query("SELECT * FROM tariffs ORDER BY id");
     res.json(result.rows);
-  } catch (err) {
-    console.error("GET /api/tariffs Error:", err);
+  } catch (_err) {
+    console.error("GET /api/tariffs Error:", _err);
     res.status(500).json({ error: "DB Error" });
   }
 });
@@ -379,8 +387,8 @@ app.put(
         [tag, subtitle, title, price, features, is_popular, id],
       );
       res.json(result.rows[0]);
-    } catch (err) {
-      console.error("PUT /api/tariffs/:id Error:", err);
+    } catch (_err) {
+      console.error("PUT /api/tariffs/:id Error:", _err);
       res.status(500).json({ error: "DB Error" });
     }
   },
@@ -394,8 +402,8 @@ app.delete(
     try {
       await pool.query("DELETE FROM tariffs WHERE id = $1", [req.params.id]);
       res.json({ success: true });
-    } catch (err) {
-      console.error("DELETE /api/tariffs/:id Error:", err);
+    } catch (_err) {
+      console.error("DELETE /api/tariffs/:id Error:", _err);
       res.status(500).json({ error: "DB Error" });
     }
   },
@@ -428,8 +436,8 @@ const start = async () => {
   try {
     const res = await pool.query("SELECT NOW()");
     console.log("Database connection successful:", res.rows[0]);
-  } catch (err) {
-    console.error("Database connection failed on startup:", err);
+  } catch (_err) {
+    console.error("Database connection failed on startup:", _err);
   }
 
   try {
@@ -439,8 +447,8 @@ const start = async () => {
     } else {
       console.error("dist directory NOT FOUND at:", distPath);
     }
-  } catch (err) {
-    console.error("Error reading dist directory:", err);
+  } catch (_err) {
+    console.error("Error reading dist directory:", _err);
   }
 
   app.listen(PORT, "0.0.0.0", () => {

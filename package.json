@@ -7,8 +7,9 @@
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "tsx watch src/server/index.ts",
     "dev:client": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -p tsconfig.app.json && vite build",
     "build:server": "tsc -p tsconfig.node.json",
+    "verify": "npm run lint && tsc -p tsconfig.app.json && tsc -p tsconfig.node.json",
     "start": "tsx src/server/index.ts",
     "preview": "vite preview",
     "lint": "eslint ."

@@ -18,7 +18,7 @@ import {
   type TariffVote,
   type Tariff,
 } from "../services/api";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/AuthContext.tsx";
 import { Link } from "react-router-dom";
 
 type Tab = "overview" | "employees" | "jk" | "tariffs" | "users";
@@ -148,13 +148,17 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Periodically refresh JKs to get live votes
+  // Periodically refresh data
   useEffect(() => {
+    if (!token) return;
+
+    // Initial load
     loadJks();
     loadUsers();
     loadScheduleVotes();
     loadTariffVotes();
     loadTariffs();
+
     const interval = setInterval(() => {
       loadJks();
       loadUsers();
@@ -162,7 +166,9 @@ const AdminDashboard: React.FC = () => {
       loadTariffVotes();
       loadTariffs();
     }, 5000);
+
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const handleUpdateTariff = async () => {

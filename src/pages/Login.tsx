@@ -13,7 +13,7 @@ import {
   type JK,
   type Tariff,
 } from "../services/api";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/AuthContext.tsx";
 
 type Step = "phone" | "profile" | "address" | "schedule" | "tariff";
 

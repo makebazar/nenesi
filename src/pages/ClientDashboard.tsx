@@ -8,7 +8,7 @@ import {
   type User,
   type Tariff,
 } from "../services/api";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/AuthContext.tsx";
 
 import { Link } from "react-router-dom";
 
@@ -19,6 +19,8 @@ const ClientDashboard: React.FC = () => {
   const { user: authUser, token, logout } = useAuth();
   const [user, setUser] = useState<User | null>(authUser);
   const [tariffs, setTariffs] = useState<Tariff[]>([]);
+  const [votedTime, setVotedTime] = useState<string | null>(null);
+  const [votedTariff, setVotedTariff] = useState<string | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -40,9 +42,6 @@ const ClientDashboard: React.FC = () => {
     };
     loadData();
   }, [token]);
-
-  const [votedTime, setVotedTime] = useState<string | null>(null);
-  const [votedTariff, setVotedTariff] = useState<string | null>(null);
 
   const timeSlots = [
     { id: "morning", label: "Утро (8:00 - 10:00)" },
