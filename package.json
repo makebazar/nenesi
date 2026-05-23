@@ -12,8 +12,10 @@
     "verify": "npm run lint && tsc -p tsconfig.app.json && tsc -p tsconfig.node.json",
     "start": "tsx src/server/index.ts",
     "preview": "vite preview",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "db:migrate": "tsx fix_db.ts"
   },
+
   "dependencies": {
     "@types/react-router-dom": "^5.3.3",
     "cors": "^2.8.6",
