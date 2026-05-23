@@ -10,6 +10,7 @@ import {
   voteForJk,
   voteForSchedule,
   voteForTariff,
+  fetchQRInfo,
   type JK,
   type Tariff,
 } from "../services/api";
@@ -66,6 +67,25 @@ const Login: React.FC = () => {
     };
     loadData();
   }, []);
+  useEffect(() => {
+    const qrCode = localStorage.getItem("nenesi_qr_code");
+    if (qrCode) {
+      const loadQRInfo = async () => {
+        try {
+          const info = await fetchQRInfo(qrCode);
+          if (info && info.jk_id) {
+            setJkId(info.jk_id.toString());
+            if (info.jk_address) {
+              setStreet(info.jk_address);
+            }
+          }
+        } catch (err) {
+          console.error("Failed to load QR info:", err);
+        }
+      };
+      loadQRInfo();
+    }
+  }, []);
 
   const handleContinue = async () => {
     if (step === "phone") {
@@ -97,11 +117,13 @@ const Login: React.FC = () => {
     } else if (step === "tariff") {
       if (!selectedTariff) return;
       try {
+        const qrCode = localStorage.getItem("nenesi_qr_code") || undefined;
         const authData = await register({
           phone,
           name,
           role: "client",
           address: { jkId, street, entrance, floor, apartment, intercom },
+          qrCode,
         });
 
         const token = authData.token;

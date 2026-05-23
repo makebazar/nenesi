@@ -13,6 +13,8 @@ export interface User {
   jk_name?: string;
   schedule_vote?: "morning" | "evening";
   tariff_vote?: string;
+  qr_source?: string;
+  qr_id?: number;
 }
 
 export interface AuthResponse {
@@ -37,6 +39,7 @@ export const register = async (data: {
   phone: string;
   name: string;
   role?: string;
+  qrCode?: string;
   address?: {
     jkId: string;
     street: string;
@@ -281,3 +284,280 @@ export const fetchUserProfile = async (token: string): Promise<User> => {
   }
   return response.json();
 };
+
+export interface QRCode {
+  id: number;
+  code: string;
+  name: string;
+  jk_id?: number;
+  jk_name?: string;
+  scans_count: number;
+  registrations_count: number;
+  created_at: string;
+}
+
+export const fetchQRCodes = async (token: string): Promise<QRCode[]> => {
+  const response = await fetch(`${API_URL}/qr`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) throw new Error("Failed to fetch QR codes");
+  return response.json();
+};
+
+export const createQRCode = async (
+  token: string,
+  data: { name: string; code?: string; jkId?: number },
+): Promise<QRCode> => {
+  const response = await fetch(`${API_URL}/qr`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to create QR code: ${errorText}`);
+  }
+  return response.json();
+};
+
+export const deleteQRCode = async (token: string, id: number): Promise<void> => {
+  const response = await fetch(`${API_URL}/qr/${id}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) throw new Error("Failed to delete QR code");
+};
+
+export interface QRInfo {
+  id: number;
+  code: string;
+  jk_id: number;
+  flat?: string;
+  created_at?: string;
+  jk_name?: string | null;
+  jk_address?: string | null;
+}
+
+export const fetchQRInfo = async (code: string): Promise<QRInfo | null> => {
+  const response = await fetch(`${API_URL}/qr/info/${code}`);
+  if (!response.ok) {
+    if (response.status === 404) return null;
+    throw new Error("Failed to fetch QR code info");
+  }
+  return response.json();
+};
+
+export interface DbTask {
+  id: number;
+  shift_id: number;
+  client_id: number;
+  jk_id: number;
+  jk_name: string;
+  jk_address: string;
+  apartment: string;
+  floor: number;
+  entrance: string;
+  intercom?: string;
+  status: "pending" | "collected" | "failed";
+  problem_type?: string;
+  photo_url?: string;
+  collected_at?: string;
+  isSynced?: boolean;
+}
+
+export interface DbShift {
+  id: number;
+  worker_id: number;
+  started_at: string;
+  ended_at?: string;
+  status: "active" | "completed";
+  earned_amount: number;
+}
+
+export interface ActiveShiftResponse {
+  active: boolean;
+  shift?: DbShift;
+  tasks?: DbTask[];
+}
+
+export const fetchActiveShift = async (token: string): Promise<ActiveShiftResponse> => {
+  const response = await fetch(`${API_URL}/worker/shift/active`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) throw new Error("Failed to fetch active shift");
+  return response.json();
+};
+
+export const startShift = async (token: string): Promise<ActiveShiftResponse> => {
+  const response = await fetch(`${API_URL}/worker/shift/start`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error || "Failed to start shift");
+  }
+  return response.json();
+};
+
+export const endShift = async (token: string): Promise<{ success: boolean; shift: DbShift }> => {
+  const response = await fetch(`${API_URL}/worker/shift/end`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) throw new Error("Failed to end shift");
+  return response.json();
+};
+
+export const collectTask = async (
+  token: string,
+  taskId: number,
+  photoUrl?: string
+): Promise<void> => {
+  const response = await fetch(`${API_URL}/worker/tasks/${taskId}/collect`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ photoUrl }),
+  });
+  if (!response.ok) throw new Error("Failed to collect task");
+};
+
+export const reportTaskProblem = async (
+  token: string,
+  taskId: number,
+  problemType: string,
+  photoUrl?: string
+): Promise<void> => {
+  const response = await fetch(`${API_URL}/worker/tasks/${taskId}/problem`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ problemType, photoUrl }),
+  });
+  if (!response.ok) throw new Error("Failed to report task problem");
+};
+
+export interface AdminEmployee {
+  id: number;
+  phone: string;
+  name: string;
+  role: string;
+  created_at: string;
+  pay_type: "task" | "hour" | "fix";
+  rate: number;
+  status: "active" | "on_shift" | "sick" | "fired";
+  assigned_jk: string;
+  balance: number;
+}
+
+export interface AdminShiftHistory {
+  id: number;
+  worker_id: number;
+  started_at: string;
+  ended_at?: string;
+  status: "active" | "completed";
+  earned_amount: number;
+  total_tasks: number;
+  collected_tasks: number;
+  failed_tasks: number;
+}
+
+export const fetchAdminWorkers = async (token: string): Promise<AdminEmployee[]> => {
+  const response = await fetch(`${API_URL}/admin/workers`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) throw new Error("Failed to fetch workers list");
+  return response.json();
+};
+
+export const createAdminWorker = async (
+  token: string,
+  data: {
+    phone: string;
+    name: string;
+    payType?: string;
+    rate?: number;
+    status?: string;
+    assignedJK?: string;
+  }
+): Promise<AdminEmployee> => {
+  const response = await fetch(`${API_URL}/admin/workers`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to create worker");
+  return response.json();
+};
+
+export const updateAdminWorker = async (
+  token: string,
+  id: number,
+  data: {
+    phone: string;
+    name: string;
+    payType?: string;
+    rate?: number;
+    status?: string;
+    assignedJK?: string;
+  }
+): Promise<void> => {
+  const response = await fetch(`${API_URL}/admin/workers/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to update worker");
+};
+
+export const payoutAdminWorker = async (token: string, id: number): Promise<void> => {
+  const response = await fetch(`${API_URL}/admin/workers/${id}/payout`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) throw new Error("Failed to complete payout");
+};
+
+export const fetchAdminWorkerShifts = async (
+  token: string,
+  id: number
+): Promise<AdminShiftHistory[]> => {
+  const response = await fetch(`${API_URL}/admin/workers/${id}/shifts`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) throw new Error("Failed to fetch worker shift history");
+  return response.json();
+};
+
+
+

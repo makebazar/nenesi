@@ -543,3 +543,151 @@
     background: var(--text-primary);
     color: #fff;
 }
+
+/* --- DESKTOP ADAPTATION & RESPONSIVE DESIGN (PC/TABLET) --- */
+
+.gridList {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+@media (min-width: 768px) {
+    /* Centered layout for main screen content */
+    .main {
+        max-width: 1200px;
+        margin: 0 auto;
+        width: 100%;
+        padding-left: 40px;
+        padding-right: 40px;
+        padding-bottom: 120px;
+    }
+
+    .pageHeader {
+        padding: 48px 0 16px 0;
+    }
+
+    /* Grid layout for stats cards on desktop */
+    .statsScroll {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        overflow-x: visible;
+        padding: 24px 0 32px 0;
+        gap: 20px;
+        scroll-snap-type: none;
+    }
+
+    .statCard {
+        min-width: 0;
+        min-height: 140px;
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: default;
+    }
+
+    .statCard:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.04);
+    }
+
+    /* Tab navigation chips on desktop */
+    .navScroll {
+        overflow-x: visible;
+        flex-wrap: wrap;
+        padding: 0 0 24px 0;
+        gap: 10px;
+    }
+
+    .navChip {
+        cursor: pointer;
+        padding: 12px 24px;
+        border-radius: 14px;
+        font-size: 14px;
+        background: rgba(0, 0, 0, 0.03);
+    }
+
+    .navChip:hover {
+        background: rgba(0, 0, 0, 0.06);
+        color: var(--text-primary);
+    }
+
+    .navChipActive {
+        background: var(--text-primary);
+        color: #fff;
+    }
+
+    .navChipActive:hover {
+        background: var(--text-primary);
+    }
+
+    /* Form section desktop styles */
+    .section {
+        padding: 40px 0;
+    }
+
+    /* List items desktop styles */
+    .listItem {
+        padding: 24px;
+        transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+    }
+
+    .listItem:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+        background: var(--card-bg);
+    }
+
+    .listItem:active {
+        transform: scale(0.99);
+    }
+
+    /* Grid for multiple list items (JK, Tariffs, QRs) */
+    .gridList {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+        gap: 20px;
+    }
+
+    /* Centered Premium Desktop Modal Dialogs */
+    .modalOverlay {
+        max-width: 650px;
+        max-height: 80vh;
+        height: auto;
+        margin: auto;
+        top: 10vh;
+        bottom: 10vh;
+        left: 0;
+        right: 0;
+        border-radius: 28px;
+        border: 1px solid var(--border-color);
+        box-shadow: 0 30px 70px rgba(0, 0, 0, 0.18);
+        animation: modalFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        background: var(--card-bg);
+    }
+
+    /* Blur wrapper to dim the background on desktop */
+    .modalOverlay::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.35);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        z-index: -1;
+        pointer-events: none;
+    }
+}
+
+@keyframes modalFadeIn {
+    from {
+        transform: translateY(30px) scale(0.96);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+

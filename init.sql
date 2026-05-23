@@ -5,14 +5,6 @@ EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
 
-CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
-    phone VARCHAR(20) UNIQUE NOT NULL,
-    name VARCHAR(100),
-    role user_role NOT NULL DEFAULT 'client',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
 -- Address info (optional for now, but good to have based on frontend fields)
 CREATE TABLE IF NOT EXISTS residential_complexes (
     id SERIAL PRIMARY KEY,
@@ -20,6 +12,24 @@ CREATE TABLE IF NOT EXISTS residential_complexes (
     address TEXT NOT NULL,
     votes INTEGER DEFAULT 0,
     status VARCHAR(50) DEFAULT 'pending',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS qr_codes (
+    id SERIAL PRIMARY KEY,
+    code VARCHAR(50) UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    jk_id INTEGER REFERENCES residential_complexes(id) ON DELETE SET NULL,
+    scans_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    phone VARCHAR(20) UNIQUE NOT NULL,
+    name VARCHAR(100),
+    role user_role NOT NULL DEFAULT 'client',
+    qr_id INTEGER REFERENCES qr_codes(id) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 

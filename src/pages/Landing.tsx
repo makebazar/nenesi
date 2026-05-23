@@ -20,6 +20,19 @@ const Landing: React.FC = () => {
 
   const [jks, setJks] = useState<JK[]>([]);
   const [tariffs, setTariffs] = useState<Tariff[]>([]);
+  const [calcFrequency, setCalcFrequency] = useState(4);
+  const [calcDuration, setCalcDuration] = useState(10);
+
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const qr = params.get("qr");
+    if (qr) {
+      localStorage.setItem("nenesi_qr_code", qr);
+      // Clean query parameter from browser address bar
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   useEffect(() => {
     if (isRevealed) return;
@@ -179,6 +192,230 @@ const Landing: React.FC = () => {
         </section>
 
         <div className={styles.contentWrapper}>
+          {/* INTERACTIVE CALCULATOR SECTION */}
+          <section
+            className={`${styles.steps} ${styles.reveal}`}
+            ref={addToRefs}
+            style={{
+              background: "#f5f5f7",
+              borderRadius: "24px",
+              padding: "40px 24px",
+              textAlign: "center",
+              marginBottom: "3rem"
+            }}
+          >
+            <div style={{ marginBottom: "24px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <span className={styles.premiumBadgeLight} style={{ background: "#e3f2fd", color: "#007af5", padding: "4px 12px", borderRadius: "20px", fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "1px" }}>Интерактивный калькулятор</span>
+              <h2 style={{ fontSize: "28px", fontWeight: "900", color: "var(--text-primary)", marginTop: "12px", marginBottom: "8px" }}>
+                Сколько времени вы дарите мусорным бакам?
+              </h2>
+              <p style={{ fontSize: "14px", color: "var(--text-secondary)", maxWidth: "500px", margin: "0" }}>
+                Посчитайте, сколько часов вашей жизни уходит на ежедневную рутину
+              </p>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "24px", maxWidth: "600px", margin: "0 auto" }}>
+              {/* Slider 1: Frequency */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px", textAlign: "left" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "10px" }}>
+                  <span style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-primary)" }}>Сколько раз в неделю вы выносите мусор?</span>
+                  <span style={{ fontSize: "15px", fontWeight: "800", color: "#007af5", whiteSpace: "nowrap", flexShrink: 0 }}>{calcFrequency} раз(а)</span>
+                </div>
+                <input
+                  type="range"
+                  min="1"
+                  max="7"
+                  value={calcFrequency}
+                  onChange={(e) => setCalcFrequency(Number(e.target.value))}
+                  style={{
+                    width: "100%",
+                    accentColor: "#007af5",
+                    cursor: "pointer",
+                    height: "6px",
+                    borderRadius: "3px"
+                  }}
+                />
+              </div>
+
+              {/* Slider 2: Duration */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px", textAlign: "left" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "10px" }}>
+                  <span style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-primary)" }}>Время на один поход (лифт, одевание, дорога)</span>
+                  <span style={{ fontSize: "15px", fontWeight: "800", color: "#007af5", whiteSpace: "nowrap", flexShrink: 0 }}>{calcDuration} минут(ы)</span>
+                </div>
+                <input
+                  type="range"
+                  min="2"
+                  max="20"
+                  value={calcDuration}
+                  onChange={(e) => setCalcDuration(Number(e.target.value))}
+                  style={{
+                    width: "100%",
+                    accentColor: "#007af5",
+                    cursor: "pointer",
+                    height: "6px",
+                    borderRadius: "3px"
+                  }}
+                />
+              </div>
+
+              {/* Dynamic Results Card */}
+              <div style={{
+                background: "#ffffff",
+                border: "1px solid #e5e5ea",
+                borderRadius: "16px",
+                padding: "24px",
+                marginTop: "12px",
+                boxShadow: "0 4px 20px rgba(0, 0, 0, 0.03)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "16px"
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-around", alignItems: "center" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    <span style={{ fontSize: "28px", fontWeight: "900", color: "#ff3b30" }}>
+                      {Math.round((calcFrequency * 52 * calcDuration) / 60)} ч
+                    </span>
+                    <span style={{ fontSize: "11px", color: "var(--text-secondary)", fontWeight: "600", textTransform: "uppercase" }}>В год теряется</span>
+                  </div>
+                  <div style={{ width: "1px", height: "40px", background: "#e5e5ea" }}></div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    <span style={{ fontSize: "28px", fontWeight: "900", color: "#007af5" }}>
+                      {Math.round(calcFrequency * 52)}
+                    </span>
+                    <span style={{ fontSize: "11px", color: "var(--text-secondary)", fontWeight: "600", textTransform: "uppercase" }}>Походов к бакам</span>
+                  </div>
+                </div>
+
+                <div style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: "1.6", borderTop: "1px solid #f5f5f7", paddingTop: "12px", textAlign: "left" }}>
+                  💡 Это время эквивалентно <strong>{Math.round((calcFrequency * 52 * calcDuration) / 60 / 16)} дням</strong> полноценной активной жизни (по 16 бодрствующих часов в сутки). Вместо этого вы могли прочесть <strong>{Math.max(1, Math.round((calcFrequency * 52 * calcDuration) / 60 / 5))} книг</strong>, посмотреть <strong>{Math.max(1, Math.round((calcFrequency * 52 * calcDuration) / 60 / 2))} фильмов</strong> или просто отлично провести время без домашних хлопот!
+                </div>
+              </div>
+
+              <button
+                className={styles.btnPremium}
+                onClick={() => navigate("/login")}
+                style={{ width: "100%", marginTop: "12px" }}
+              >
+                Вернуть себе это время
+              </button>
+            </div>
+          </section>
+
+          {/* FOR WHOM IS THIS SUITABLE SECTION */}
+          <section
+            className={`${styles.steps} ${styles.reveal}`}
+            ref={addToRefs}
+            style={{
+              padding: "40px 0",
+              textAlign: "center",
+              marginBottom: "3rem"
+            }}
+          >
+            <div style={{ marginBottom: "32px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <span className={styles.premiumBadgeLight} style={{ background: "#e8f5e9", color: "#2e7d32", padding: "4px 12px", borderRadius: "20px", fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "1px" }}>Для кого это?</span>
+              <h2 style={{ fontSize: "28px", fontWeight: "900", color: "var(--text-primary)", marginTop: "12px", marginBottom: "8px" }}>
+                Кому идеально подходит наш сервис?
+              </h2>
+              <p style={{ fontSize: "14px", color: "var(--text-secondary)", maxWidth: "500px", margin: "0" }}>
+                Найдите себя среди тех, кто уже навсегда забыл про походы к мусорным бакам
+              </p>
+            </div>
+
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+              gap: "20px",
+              maxWidth: "1100px",
+              margin: "0 auto",
+              padding: "0 10px"
+            }}>
+              {/* Persona 1 */}
+              <div style={{
+                background: "#ffffff",
+                border: "1px solid #e5e5ea",
+                borderRadius: "20px",
+                padding: "24px",
+                textAlign: "left",
+                boxShadow: "0 4px 20px rgba(0, 0, 0, 0.02)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "12px"
+              }}>
+                <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "#efebe9", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px" }}>
+                  🍼
+                </div>
+                <h3 style={{ fontSize: "17px", fontWeight: "800", color: "var(--text-primary)", margin: "0" }}>Молодым семьям с детьми</h3>
+                <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: "1.6", margin: "0" }}>
+                  Горы подгузников и детского мусора накапливаются мгновенно, а выходить с коляской к бакам в дождь или мороз — настоящее испытание. Мы освободим время для семьи.
+                </p>
+              </div>
+
+              {/* Persona 2 */}
+              <div style={{
+                background: "#ffffff",
+                border: "1px solid #e5e5ea",
+                borderRadius: "20px",
+                padding: "24px",
+                textAlign: "left",
+                boxShadow: "0 4px 20px rgba(0, 0, 0, 0.02)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "12px"
+              }}>
+                <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "#e3f2fd", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px" }}>
+                  💻
+                </div>
+                <h3 style={{ fontSize: "17px", fontWeight: "800", color: "var(--text-primary)", margin: "0" }}>Занятым и фрилансерам</h3>
+                <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: "1.6", margin: "0" }}>
+                  Когда вы работаете допоздна или находитесь на созвонах из дома, последнее, чего хочется перед сном или в спешке с утра — одеваться и нести пакеты на улицу.
+                </p>
+              </div>
+
+              {/* Persona 3 */}
+              <div style={{
+                background: "#ffffff",
+                border: "1px solid #e5e5ea",
+                borderRadius: "20px",
+                padding: "24px",
+                textAlign: "left",
+                boxShadow: "0 4px 20px rgba(0, 0, 0, 0.02)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "12px"
+              }}>
+                <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "#ffebee", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px" }}>
+                  🐾
+                </div>
+                <h3 style={{ fontSize: "17px", fontWeight: "800", color: "var(--text-primary)", margin: "0" }}>Владельцам питомцев</h3>
+                <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: "1.6", margin: "0" }}>
+                  Наполнители лотков и органические остатки кормов требуют немедленной утилизации, чтобы дома пахло свежестью. Мы уберем запахи из вашей квартиры раз и навсегда.
+                </p>
+              </div>
+
+              {/* Persona 4 */}
+              <div style={{
+                background: "#ffffff",
+                border: "1px solid #e5e5ea",
+                borderRadius: "20px",
+                padding: "24px",
+                textAlign: "left",
+                boxShadow: "0 4px 20px rgba(0, 0, 0, 0.02)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "12px"
+              }}>
+                <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "#efebe9", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px" }}>
+                  ❤️
+                </div>
+                <h3 style={{ fontSize: "17px", fontWeight: "800", color: "var(--text-primary)", margin: "0" }}>Пожилым родителям</h3>
+                <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: "1.6", margin: "0" }}>
+                  Ступеньки, тяжелые ведра и скользкий гололед у мусорных баков — постоянный риск. Закажите подписку для своих родителей в качестве заботы об их здоровье и безопасности.
+                </p>
+              </div>
+            </div>
+          </section>
+
           {/* NOTIFICATION TIMELINE SECTION */}
           <section
             className={`${styles.mockupSection} ${styles.reveal}`}
@@ -297,6 +534,8 @@ const Landing: React.FC = () => {
               </div>
             </div>
           </section>
+
+
 
           {/* REAL-TIME PROGRESS / WAITING LIST */}
           <section

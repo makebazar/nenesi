@@ -22,6 +22,52 @@ const ClientDashboard: React.FC = () => {
   const [votedTime, setVotedTime] = useState<string | null>(null);
   const [votedTariff, setVotedTariff] = useState<string | null>(null);
 
+  const getNextCollectionDate = () => {
+    if (!votedTariff || !votedTime || !user) return null;
+    
+    const now = new Date();
+    // Start calculating from tomorrow
+    const tomorrow = new Date(now);
+    tomorrow.setDate(now.getDate() + 1);
+
+    const formatOptions: Intl.DateTimeFormatOptions = { day: "numeric", month: "long" };
+    
+    if (votedTariff !== "Эконом") {
+      // Comfort/daily is always tomorrow
+      const timeStr = votedTime === "morning" ? "утром" : "вечером";
+      return {
+        dateStr: tomorrow.toLocaleDateString("ru-RU", formatOptions),
+        timeStr,
+        dayName: "завтра"
+      };
+    } else {
+      // Economy alternates based on user ID parity and day of month parity
+      const tomorrowDay = tomorrow.getDate();
+      const isTomorrowOdd = tomorrowDay % 2 !== 0;
+      const userId = user.id || 1;
+      
+      const startsTomorrow = isTomorrowOdd ? (userId % 2 !== 0) : (userId % 2 === 0);
+      const timeStr = votedTime === "morning" ? "утром" : "вечером";
+
+      if (startsTomorrow) {
+        return {
+          dateStr: tomorrow.toLocaleDateString("ru-RU", formatOptions),
+          timeStr,
+          dayName: "завтра"
+        };
+      } else {
+        const dayAfterTomorrow = new Date(now);
+        dayAfterTomorrow.setDate(now.getDate() + 2);
+        return {
+          dateStr: dayAfterTomorrow.toLocaleDateString("ru-RU", formatOptions),
+          timeStr,
+          dayName: "послезавтра"
+        };
+      }
+    }
+  };
+
+
   useEffect(() => {
     const loadData = async () => {
       if (token) {
@@ -247,36 +293,76 @@ const ClientDashboard: React.FC = () => {
           <h1 className={styles.pageTitle}>Личный кабинет</h1>
         </div>
 
-        <section className={styles.promoSection}>
-          <div className={styles.promoCard}>
-            <span className={styles.promoIcon}>🚀</span>
-            <h3 className={styles.promoTitle}>Готовимся к запуску!</h3>
-            <p className={styles.promoText}>
-              Сейчас мы собираем заявки в вашем доме. Как только наберется
-              нужное количество участников, мы свяжемся с вами и запустим
-              сервис.
-            </p>
-            <div className={styles.giftVoucher}>
-              <div className={styles.voucherContent}>
-                <div className={styles.voucherTop}>
-                  <span className={styles.voucherTitle}>
-                    ПОДАРОК ЗА ОЖИДАНИЕ
-                  </span>
-                </div>
+        {votedTariff && votedTime ? (
+          <section className={styles.promoSection} style={{ marginBottom: "2rem" }}>
+            <div className={styles.promoCard} style={{ background: "linear-gradient(135deg, #007af5 0%, #0055b3 100%)", color: "#fff", padding: "24px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+                <span style={{ fontSize: "12px", fontWeight: "800", background: "rgba(255, 255, 255, 0.2)", padding: "4px 10px", borderRadius: "20px", textTransform: "uppercase", letterSpacing: "1px" }}>
+                  Подписка активна ✨
+                </span>
+                <span style={{ fontSize: "14px", fontWeight: "700", background: "#e8f5e9", color: "#2e7d32", padding: "4px 10px", borderRadius: "20px" }}>💳 Оплачено</span>
+              </div>
+              
+              <h3 className={styles.promoTitle} style={{ fontSize: "20px", fontWeight: "800", marginBottom: "8px", color: "#fff", textAlign: "left" }}>
+                Начинайте выставлять мусор {getNextCollectionDate()?.dayName} {getNextCollectionDate()?.timeStr}, {getNextCollectionDate()?.dateStr}!
+              </h3>
+              
+              <p className={styles.promoText} style={{ opacity: 0.95, fontSize: "14px", lineHeight: "1.5", color: "#fff", marginBottom: "16px", textAlign: "left" }}>
+                Мы настроили ваш персональный график. Пожалуйста, выставляйте пакет с мусором за входную дверь вашей квартиры до{" "}
+                <strong>{votedTime === "morning" ? "08:00 утра" : "20:00 вечера"}</strong>. Наш курьер заберёт его в указанный интервал.
+              </p>
 
-                <div className={styles.voucherBody}>
-                  <span className={styles.voucherValue}>14 дней</span>
-                  <span className={styles.voucherLabel}>
-                    бесплатного сервиса
-                  </span>
+              <div style={{ background: "rgba(255, 255, 255, 0.15)", borderRadius: "12px", padding: "16px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "13px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ opacity: 0.8 }}>Ваш тариф:</span>
+                    <strong style={{ fontWeight: "700" }}>«{votedTariff}» ({votedTariff === "Эконом" ? "через день" : "каждый день"})</strong>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ opacity: 0.8 }}>Время забора:</span>
+                    <strong style={{ fontWeight: "700" }}>{votedTime === "morning" ? "Утро (8:00 - 10:00)" : "Вечер (20:00 - 22:00)"}</strong>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ opacity: 0.8 }}>Адрес вывоза:</span>
+                    <strong style={{ fontWeight: "700" }}>кв. {user.apartment}, эт. {user.floor}, подъезд {user.entrance}</strong>
+                  </div>
                 </div>
-                <p className={styles.voucherNote}>
-                  Будет активирован автоматически в первый месяц работы
-                </p>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        ) : (
+          <section className={styles.promoSection}>
+            <div className={styles.promoCard}>
+              <span className={styles.promoIcon}>🚀</span>
+              <h3 className={styles.promoTitle}>Готовимся к запуску!</h3>
+              <p className={styles.promoText}>
+                Сейчас мы собираем заявки в вашем доме. Как только наберется
+                нужное количество участников, мы свяжемся с вами и запустим
+                сервис.
+              </p>
+              <div className={styles.giftVoucher}>
+                <div className={styles.voucherContent}>
+                  <div className={styles.voucherTop}>
+                    <span className={styles.voucherTitle}>
+                      ПОДАРОК ЗА ОЖИДАНИЕ
+                    </span>
+                  </div>
+
+                  <div className={styles.voucherBody}>
+                    <span className={styles.voucherValue}>14 дней</span>
+                    <span className={styles.voucherLabel}>
+                      бесплатного сервиса
+                    </span>
+                  </div>
+                  <p className={styles.voucherNote}>
+                    Будет активирован автоматически в первый месяц работы
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
 
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
