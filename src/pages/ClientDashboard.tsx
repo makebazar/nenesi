@@ -298,34 +298,62 @@ const ClientDashboard: React.FC = () => {
             <div className={styles.promoCard} style={{ background: "linear-gradient(135deg, #007af5 0%, #0055b3 100%)", color: "#fff", padding: "24px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
                 <span style={{ fontSize: "12px", fontWeight: "800", background: "rgba(255, 255, 255, 0.2)", padding: "4px 10px", borderRadius: "20px", textTransform: "uppercase", letterSpacing: "1px" }}>
-                  Подписка активна ✨
+                  Заявка принята ✨
                 </span>
-                <span style={{ fontSize: "14px", fontWeight: "700", background: "#e8f5e9", color: "#2e7d32", padding: "4px 10px", borderRadius: "20px" }}>💳 Оплачено</span>
+                <span style={{ fontSize: "14px", fontWeight: "700", background: "#e8f5e9", color: "#2e7d32", padding: "4px 10px", borderRadius: "20px" }}>⏱ Предзапуск</span>
               </div>
               
               <h3 className={styles.promoTitle} style={{ fontSize: "20px", fontWeight: "800", marginBottom: "8px", color: "#fff", textAlign: "left" }}>
-                Начинайте выставлять мусор {getNextCollectionDate()?.dayName} {getNextCollectionDate()?.timeStr}, {getNextCollectionDate()?.dateStr}!
+                Мы готовимся к запуску в вашем доме!
               </h3>
               
               <p className={styles.promoText} style={{ opacity: 0.95, fontSize: "14px", lineHeight: "1.5", color: "#fff", marginBottom: "16px", textAlign: "left" }}>
-                Мы настроили ваш персональный график. Пожалуйста, выставляйте пакет с мусором за входную дверь вашей квартиры до{" "}
-                <strong>{votedTime === "morning" ? "08:00 утра" : "20:00 вечера"}</strong>. Наш курьер заберёт его в указанный интервал.
+                Спасибо за доверие! Сейчас мы активно собираем заявки от жильцов вашего ЖК. Как только наберется необходимое количество участников, мы свяжемся с вами по телефону <strong>{user.phone}</strong> для подтверждения и запустим сервис.
               </p>
 
-              <div style={{ background: "rgba(255, 255, 255, 0.15)", borderRadius: "12px", padding: "16px" }}>
+              <div style={{ background: "rgba(255, 255, 255, 0.15)", borderRadius: "12px", padding: "16px", marginBottom: "16px" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "13px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ opacity: 0.8 }}>Ваш тариф:</span>
+                    <span style={{ opacity: 0.8 }}>Выбранный тариф:</span>
                     <strong style={{ fontWeight: "700" }}>«{votedTariff}» ({votedTariff === "Эконом" ? "через день" : "каждый день"})</strong>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ opacity: 0.8 }}>Время забора:</span>
+                    <span style={{ opacity: 0.8 }}>Удобное время:</span>
                     <strong style={{ fontWeight: "700" }}>{votedTime === "morning" ? "Утро (8:00 - 10:00)" : "Вечер (20:00 - 22:00)"}</strong>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ opacity: 0.8 }}>Адрес вывоза:</span>
+                    <span style={{ opacity: 0.8 }}>Адрес подключения:</span>
                     <strong style={{ fontWeight: "700" }}>кв. {user.apartment}, эт. {user.floor}, подъезд {user.entrance}</strong>
                   </div>
+                </div>
+              </div>
+
+              {/* Gift notice */}
+              <div style={{
+                marginTop: "4px",
+                background: "rgba(255, 255, 255, 0.12)",
+                border: "1px solid rgba(255, 255, 255, 0.25)",
+                borderRadius: "14px",
+                padding: "14px 16px",
+                display: "flex",
+                alignItems: "flex-start",
+                gap: "12px",
+              }}>
+                <div style={{
+                  width: "38px",
+                  height: "38px",
+                  minWidth: "38px",
+                  background: "rgba(255, 255, 255, 0.2)",
+                  borderRadius: "10px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "20px",
+                }}>🎁</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                  <span style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.8px", opacity: 0.7 }}>Подарок за ожидание</span>
+                  <span style={{ fontSize: "15px", fontWeight: "800", lineHeight: "1.2" }}>14 дней бесплатно</span>
+                  <span style={{ fontSize: "12px", opacity: 0.8, lineHeight: "1.4", marginTop: "2px" }}>Активируются автоматически в первый месяц работы сервиса</span>
                 </div>
               </div>
             </div>

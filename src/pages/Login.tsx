@@ -225,7 +225,7 @@ const Login: React.FC = () => {
                     </option>
                     {jks.map((jk) => (
                       <option key={jk.id} value={jk.id}>
-                        {jk.name} ({jk.address})
+                        {jk.name}
                       </option>
                     ))}
                   </select>
